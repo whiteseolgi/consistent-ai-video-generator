@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class CutImageGenerator(metaclass=ABCMeta):
+class CutImageGeneratorBase(metaclass=ABCMeta):
     def __init__(self, entity=None):
         self.__cut = None
         self.__cut_image = None
@@ -36,7 +36,7 @@ class CutImageGenerator(metaclass=ABCMeta):
         self.__ai_model = value
 
 
-class VideoGenerator(metaclass=ABCMeta):
+class VideoGeneratorBase(metaclass=ABCMeta):
     def __init__(self, cut_image=None):
         self.__cut_image_list = None
         self.__video = None
@@ -61,6 +61,41 @@ class VideoGenerator(metaclass=ABCMeta):
     @video.setter
     def video(self, value):
         self.__video = value
+
+    @property
+    def ai_model(self):
+        return self.__ai_model
+
+    @ai_model.setter
+    def ai_model(self, value):
+        self.__ai_model = value
+
+
+class VideoPostprocessorBase(metaclass=ABCMeta):
+    def __init__(self, video=None):
+        self.__video = None
+        self.__processed_video = None
+        self.__ai_model = None
+
+    @abstractmethod
+    def execute(self):
+        pass
+
+    @property
+    def video(self):
+        return self.__video
+
+    @video.setter
+    def video(self, value):
+        self.__video = value
+
+    @property
+    def processed_video(self):
+        return self.__processed_video
+
+    @processed_video.setter
+    def processed_video(self, value):
+        self.__processed_video = value
 
     @property
     def ai_model(self):

@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class SynopsisAnalyzer(metaclass=ABCMeta):
+class SynopsisAnalyzerBase(metaclass=ABCMeta):
     def __init__(self, synopsis=None):
         self.__synopsis = None
         self.__entity_draft_list = None
@@ -36,14 +36,23 @@ class SynopsisAnalyzer(metaclass=ABCMeta):
         self.__ai_model = value
 
 
-class EntityCreator(metaclass=ABCMeta):
+class EntityCreatorBase(metaclass=ABCMeta):
     def __init__(self, entity=None):
+        self.__entity_draft = None
         self.__entity = None
         self.__ai_model = None
 
     @abstractmethod
     def execute(self):
         pass
+
+    @property
+    def entity_draft(self):
+        return self.__entity_draft
+
+    @entity_draft.setter
+    def entity_draft(self, value):
+        self.__entity_draft = value
 
     @property
     def entity(self):
