@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class SceneAnalyzer(metaclass=ABCMeta):
+class SceneAnalyzerBase(metaclass=ABCMeta):
     def __init__(self, story=None):
         self.__story = None
         self.__scene_list = None
@@ -36,7 +36,7 @@ class SceneAnalyzer(metaclass=ABCMeta):
         self.__ai_model = value
 
 
-class CutGenerator(metaclass=ABCMeta):
+class CutGeneratorBase(metaclass=ABCMeta):
     def __init__(self, story=None):
         self.__scene = None
         self.__cut_list = None
