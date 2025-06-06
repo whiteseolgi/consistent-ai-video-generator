@@ -36,12 +36,13 @@ class VideoGenerator(VideoGeneratorBase):
     #     except FileNotFoundError:
     #         raise RuntimeError("api key doesn't exist")
 
-    def execute(self):
+    def execute(self, output_path="./"):
         if not self.cut_image_list:
             raise ValueError("cut_image_list is empty")
         if not self.ai_model:
             raise RuntimeError("There is no model")
         
+        os.makedirs(output_path, exist_ok=True)  # 출력 경로 없으면 생성
         results = []
 
         for image_path in self.cut_image_list:
@@ -80,12 +81,13 @@ class VideoGenerator(VideoGeneratorBase):
                 if output_urls and isinstance(output_urls, list):
                     video_url = output_urls[0]
                     filename = f"{name_without_ext}_video.mp4"
+                    full_path = os.path.join(output_path, filename)
 
                     response = requests.get(video_url)
                     if response.status_code == 200:
-                        with open(filename, "wb") as f:
+                        with open(full_path, "wb") as f:
                             f.write(response.content)
-                        results.append(filename)
+                        results.append(full_path)
                     else:
                         print(f"[{base_name}] Error status code: {response.status_code}")
                 else:
@@ -93,16 +95,17 @@ class VideoGenerator(VideoGeneratorBase):
             else:
                 print(f"[{base_name}] fail to generate video: {task.status}")
 
-
-        with open("clip_file_list.txt", "w", encoding="utf-8") as f:
+        list_path = os.path.join(output_path, "clip_file_list.txt")
+        with open(list_path, "w", encoding="utf-8") as f:
             for vf in results:
                 f.write(f"file '{vf}'\n")
         
+        final_output = os.path.join(output_path, "final_merged_video.mp4")
         subprocess.run([
             "ffmpeg", "-f", "concat", "-safe", "0",
-            "-i", "clip_file_list.txt", "-c", "copy", "final_merged_video.mp4"
+            "-i", list_path, "-c", "copy", final_output
         ])
-        self.video = "final_merged_video.mp4"
+        self.video = final_output
 
 
 # -------------- For test ----------------------
