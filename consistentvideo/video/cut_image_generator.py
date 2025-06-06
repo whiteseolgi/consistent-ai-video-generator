@@ -2,7 +2,7 @@ from openai import OpenAI
 import base64
 from PIL import Image
 from io import BytesIO
-from .base import CutImageGeneratorBase
+from base import CutImageGeneratorBase
 import requests
 from dotenv import load_dotenv
 import os
@@ -11,9 +11,10 @@ load_dotenv()
 
 
 class CutImageGenerator(CutImageGeneratorBase):
-    def __init__(self, entity=None):
+    def __init__(self, entity=None):        # entity = list<image, description>
         super().__init__(entity)
         self.ai_model = self.__create_client()
+
 
     def __create_client(self) -> OpenAI:
         api_key = os.getenv("OPENAI_API_KEY")
@@ -33,49 +34,67 @@ class CutImageGenerator(CutImageGeneratorBase):
             raise RuntimeError("Image generating model dosen't exist")
 
         # Input prompt composing
-        prompt = self.cut if not self.entity else f"{self.cut} ///// {self.entity}"
+        prompt_descs = [desc for _, desc in self.entity]
+        cut_description = self.cut['description'] if isinstance(self.cut, dict) else str(self.cut)
+        prompt = f"{cut_description} ///// {' '.join(prompt_descs)}"
         prompt = prompt + """
                 Based on /////, the front part is the story and the back part is the attributes in the story. 
-                And make the image describing the story in a 16:9 ratio by referring to the attributes needed to describe the story among the character object background attributes.
+                And make the image describing the story by referring to the attributes needed to describe the story among the character object background attributes.
                 """
+        image_files = [open(path, "rb") for path, _ in self.entity]
+    
 
         # ---------------dalle3 (can also dalle2)--------------
 
-        result = self.ai_model.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1792x1024"
-        )
-        image_url = result.data[0].url
-        image_bytes = requests.get(image_url).content
-        self.cut_image = Image.open(BytesIO(image_bytes))
+        # result = self.ai_model.images.generate(
+        #     model="dall-e-3",
+        #     prompt=prompt,
+        #     size="1792x1024"
+        # )
+        # image_url = result.data[0].url
+        # image_bytes = requests.get(image_url).content
+        # self.cut_image = Image.open(BytesIO(image_bytes))
 
         # -----------------------------------------------------
         # 
         # ---------------------gpt-image-1---------------------
 
-        # result = self.ai_model.images.generate(
-        #     model="gpt-image-1",
-        #     prompt=prompt,
-        #     # quality="low",         # high/medium/low
-        #     size="1024x1024"       # There is no size compatible 16:9, need to adjust by prompt
-        # )
-        # image_base64 = result.data[0].b64_json
-        # image_bytes = base64.b64decode(image_base64)
-        # self.cut_image = Image.open(BytesIO(image_bytes))
+        result = self.ai_model.images.edit(
+            model="gpt-image-1",
+            image=image_files,
+            prompt=prompt,
+            # quality="low",         # high/medium/low
+            size="1024x1024"       # There is no size compatible 16:9, need to adjust by prompt
+        )
+
+        for f in image_files:
+            f.close()  # closing file descriptor 
+
+        image_base64 = result.data[0].b64_json
+        image_bytes = base64.b64decode(image_base64)
+        self.cut_image = Image.open(BytesIO(image_bytes))
 
         # -----------------------------------------------------
+        return self.cut_image
+        # --------for test, will be deleted
 
 # -------------- For test ----------------------
 
 # if __name__ == "__main__":
-#     generator = CutImageGenerator()
-#     generator.cut = "point-of-view from an elderly man's perspective as he steps into an almost empty city bus, rows of fabric-covered blue seats stretching forward, subtle overhead lighting, daylight pouring in through the side windows, clean floor and metal handrails, overall quiet atmosphere, photorealistic interior shot"
-#     generator.entity = """
-#         bus_driver : A realistic passport-style photo of a middle-aged Korean man in his late 40s or early 50s. Short black hair, slightly receding hairline, tired eyes, and faint stubble on the chin. Wearing a navy blue work uniform shirt with a subtle badge or patch, like a bus company logo. Neutral-to-frustrated expression. Plain off-white or very light gray background. Realistic lighting, clear focus.
-#         elderly_person : A realistic passport-style photo of an elderly Korean man in his late 70s. Balding head with short gray hair on the sides, deep facial wrinkles, thick gray eyebrows, and a slightly smirking expression. Wearing a beige cardigan or windbreaker over a collared shirt. Slight squint in the eyes, suggesting stubbornness or mischief. Plain light blue background. Front-facing, realistic lighting.
-#         main_character : A realistic passport-style photo of a young Korean man in his early 20s. Short, tidy black hair, clean-shaven face, even skin tone. Wearing a simple light gray or white crewneck T-shirt. Neutral expression with a hint of a gentle smile, looking calm and observant. Plain light gray background. Front-facing, well-lit, soft shadows."""
+
+#     filtered_result = [
+#     ('시내버스_front.png', '시내버스 : 크기: 대형(길이 약 10m, 40인승), 색깔: 파란색(서울 시내버스 기준, 임의), 형체: 직사각형, 창문이 큼, 카테고리: 교통수단, 태그: 대중교통, 정류장, 종점, 기사, 승객')
+#     ]
+
+#     generator = CutImageGenerator(entity=filtered_result)
+#     generator.cut = {
+#     'cut_id': 1,
+#     'description': '버스 정류장에서 버스가 도착하는 장면.',
+#     'characters': [],
+#     'background': '조용한 아침 거리와 버스 정류장.',
+#     'objects': ['버스', '버스 정류장']
+#     }
 
 #     img = generator.execute()
 #     img.show()
-#     img.save("2-2.png")
+#     img.save("edited_output.png")
