@@ -1,4 +1,4 @@
-from base import VideoGeneratorBase
+from .base import VideoGeneratorBase
 import base64
 import time
 import requests
@@ -7,6 +7,9 @@ from PIL import Image
 from io import BytesIO
 import os
 import subprocess
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # 컷 묘사 이미지와 컷 텍스트, 비디오 저장위치 등의 경로에 대해서 수정할 필요가 있음!!!!!
 # from moviepy.editor import VideoFileClip, concatenate_videoclips으로 합치는 기능이 있지만 우선 
@@ -23,15 +26,15 @@ class VideoGenerator(VideoGeneratorBase):
         # ------------ 추상클래스에 없는 필드 테스트용으로 만들어서 사용한 부분임 삭제 요망!!!!!!!!!!!!!!!!!!!!
 
     def __create_client(self) -> RunwayML:
-        api_key = self.__load_gpt_api_key()
+        api_key = os.getenv("RUNWAY_API_KEY")
         return RunwayML(api_key=api_key)
 
-    def __load_gpt_api_key(self) -> str:
-        try:
-            with open("runway_api_key.txt", "r") as file:
-                return file.read().strip()
-        except FileNotFoundError:
-            raise RuntimeError("api key doesn't exist")
+    # def __load_gpt_api_key(self) -> str:
+    #     try:
+    #         with open("runway_api_key.txt", "r") as file:
+    #             return file.read().strip()
+    #     except FileNotFoundError:
+    #         raise RuntimeError("api key doesn't exist")
 
     def execute(self):
         if not self.cut_image_list:
