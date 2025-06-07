@@ -12,7 +12,7 @@ load_dotenv()
 
 
 class CutImageGenerator(CutImageGeneratorBase):
-    def __init__(self, cut:dict, entity_image_path:str, entity:list=None): # cut = dict, entity = list<tuple(type, name, desc, image_path)>
+    def __init__(self, cut:dict, output_path:str, entity_image_path:str, entity:list=None): # cut = dict, entity = list<tuple(type, name, desc, image_path)>
         '''
         ex)
         cut = {'cut_id': 1, 'description': '버스 정류장에서 버스가 도착하는 장면.', 'characters': [], 'background': '조용한 아침 거리와 버스 정류장.', 'objects': ['버스', '버스 정류장']}
@@ -26,6 +26,7 @@ class CutImageGenerator(CutImageGeneratorBase):
         self.ai_model = self.__create_client()
         self.cut = cut
         self.entity_image_path = entity_image_path
+        self.output_path = output_path
 
 
     def __create_client(self) -> OpenAI:
@@ -47,8 +48,9 @@ class CutImageGenerator(CutImageGeneratorBase):
         if not self.entity:
             print("Entity list is empty") # not error
 
-        # Get cut description
+        # Get cut information
         cut_description = self.cut.get('description', '')
+        cut_id = self.cut.get("cut_id", "unknown")
 
         # Get entities that will be used
         prompt_entity_parts = []
@@ -118,7 +120,12 @@ class CutImageGenerator(CutImageGeneratorBase):
         image_bytes = base64.b64decode(image_base64)
         self.cut_image = Image.open(BytesIO(image_bytes))
 
-        return self.cut_image
+        filename = f"{cut_id}_depiction_image.png"
+        save_path = os.path.join(self.output_path, filename)
+        os.makedirs(self.output_path, exist_ok=True)
+        self.cut_image.save(save_path)
+
+        return save_path
         # --------for test, will be deleted -------------------
 
 # -------------- For test ----------------------
