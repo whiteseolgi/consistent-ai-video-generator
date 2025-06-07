@@ -54,18 +54,19 @@ class CutImageGenerator(CutImageGeneratorBase):
         prompt_entity_parts = []
         image_files = []
 
-        for e_type, name, attr_json, image_filename in self.entity:
-            try:
-                attrs = json.loads(attr_json)
-            except json.JSONDecodeError:
-                attrs = {}
-            desc = f"{e_type}: {name}. " + ", ".join([f"{k}: {v}" for k, v in attrs.items()])
-            prompt_entity_parts.append(desc)
+        if self.entity:
+            for e_type, name, attr_json, image_filename in self.entity:
+                try:
+                    attrs = json.loads(attr_json)
+                except json.JSONDecodeError:
+                    attrs = {}
+                desc = f"{e_type}: {name}. " + ", ".join([f"{k}: {v}" for k, v in attrs.items()])
+                prompt_entity_parts.append(desc)
 
-            image_path = os.path.join(self.entity_image_path, image_filename)
-            if not os.path.exists(image_path):
-                raise FileNotFoundError(f"Entity image file not found: {image_path}")
-            image_files.append(open(image_path, "rb"))
+                image_path = os.path.join(self.entity_image_path, image_filename)
+                if not os.path.exists(image_path):
+                    raise FileNotFoundError(f"Entity image file not found: {image_path}")
+                image_files.append(open(image_path, "rb"))
         
         # Input prompt composing
         entity_prompt = " ".join(prompt_entity_parts)
@@ -92,13 +93,22 @@ class CutImageGenerator(CutImageGeneratorBase):
         # 
         # ---------------------gpt-image-1---------------------
 
-        result = self.ai_model.images.edit(
+        if image_files:
+            result = self.ai_model.images.edit(
             model="gpt-image-1",
             image=image_files,
             prompt=prompt,
             # quality="low",         # high/medium/low
             size="1024x1024"       # There is no size compatible 16:9, need to adjust by prompt
-        )
+            )
+        else:
+            result = self.ai_model.images.generate(
+            model="gpt-image-1",
+            prompt=prompt,
+            # quality="low",         # high/medium/low
+            size="1024x1024"       # There is no size compatible 16:9, need to adjust by prompt
+            )        
+        # -----------------------------------------------------
 
         # closing file descriptor 
         for f in image_files:
@@ -108,7 +118,6 @@ class CutImageGenerator(CutImageGeneratorBase):
         image_bytes = base64.b64decode(image_base64)
         self.cut_image = Image.open(BytesIO(image_bytes))
 
-        # -----------------------------------------------------
         return self.cut_image
         # --------for test, will be deleted -------------------
 
