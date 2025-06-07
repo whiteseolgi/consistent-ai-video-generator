@@ -58,17 +58,22 @@ class CutImageGenerator(CutImageGeneratorBase):
 
         if self.entity:
             for e_type, name, attr_json, image_filename in self.entity:
-                try:
-                    attrs = json.loads(attr_json)
-                except json.JSONDecodeError:
-                    attrs = {}
-                desc = f"{e_type}: {name}. " + ", ".join([f"{k}: {v}" for k, v in attrs.items()])
-                prompt_entity_parts.append(desc)
+                if (
+                    (e_type == "character" and name in self.cut.get("characters", [])) or
+                    (e_type == "object" and name in self.cut.get("objects", [])) or
+                    (e_type == "background" and name == self.cut.get("background", ""))
+                ):
+                    try:
+                        attrs = json.loads(attr_json)
+                    except json.JSONDecodeError:
+                        attrs = {}
+                    desc = f"{e_type}: {name}. " + ", ".join([f"{k}: {v}" for k, v in attrs.items()])
+                    prompt_entity_parts.append(desc)
 
-                image_path = os.path.join(self.entity_image_path, image_filename)
-                if not os.path.exists(image_path):
-                    raise FileNotFoundError(f"Entity image file not found: {image_path}")
-                image_files.append(open(image_path, "rb"))
+                    image_path = os.path.join(self.entity_image_path, image_filename)
+                    if not os.path.exists(image_path):
+                        raise FileNotFoundError(f"Entity image file not found: {image_path}")
+                    image_files.append(open(image_path, "rb"))
         
         # Input prompt composing
         entity_prompt = " ".join(prompt_entity_parts)
