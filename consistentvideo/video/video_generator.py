@@ -17,12 +17,14 @@ load_dotenv()
 
 class VideoGenerator(VideoGeneratorBase):
 
-    def __init__(self, cut_image_list=None):
+    def __init__(self, cut_list, output_path="./", cut_image_list=None):
         super().__init__(cut_image_list)    # cut_image_list = ["path1", "path2", ... ]
         self.ai_model = self.__create_client()
-
+        self.cut_list = cut_list
+        self.output_path = output_path
+        
         # ------------ 추상클래스에 없는 필드 테스트용으로 만들어서 사용한 부분임 삭제 요망!!!!!!!!!!!!!!!!!!!!
-        # self.cut_image_list = cut_image_list
+        self.cut_image_list = cut_image_list
         # ------------ 추상클래스에 없는 필드 테스트용으로 만들어서 사용한 부분임 삭제 요망!!!!!!!!!!!!!!!!!!!!
 
     def __create_client(self) -> RunwayML:
@@ -36,25 +38,23 @@ class VideoGenerator(VideoGeneratorBase):
     #     except FileNotFoundError:
     #         raise RuntimeError("api key doesn't exist")
 
-    def execute(self, output_path="./"):
+    def execute(self):
         if not self.cut_image_list:
             raise ValueError("cut_image_list is empty")
+        if not self.cut_list or len(self.cut_list) != len(self.cut_image_list):
+            raise ValueError("cut_list is missing or does not match the number of images")
         if not self.ai_model:
             raise RuntimeError("There is no model")
         
-        os.makedirs(output_path, exist_ok=True)  # 출력 경로 없으면 생성
+        os.makedirs(self.output_path, exist_ok=True)  # 출력 경로 없으면 생성
         results = []
 
-        for image_path in self.cut_image_list:
+        for cut, image_path in zip(self.cut_list, self.cut_image_list):
+            cut_id = cut.get('cut_id')
+            description = cut.get('description', '')
             base_name = os.path.basename(image_path)
             name_without_ext = os.path.splitext(base_name)[0]
-            prompt_path = f"{name_without_ext}.txt"      # cut text path
-            try:
-                with open(prompt_path, "r", encoding="utf-8") as txt_file:
-                    description = txt_file.read().strip()
-            except FileNotFoundError:
-                raise RuntimeError(f"Cut text '{prompt_path}'does not exist.")
-            
+
             prompt_text = f"{description} Make a video that fits this situation."
 
             with open(image_path, "rb") as img_file:
@@ -80,8 +80,8 @@ class VideoGenerator(VideoGeneratorBase):
                 output_urls = task.output
                 if output_urls and isinstance(output_urls, list):
                     video_url = output_urls[0]
-                    filename = f"{name_without_ext}_video.mp4"
-                    full_path = os.path.join(output_path, filename)
+                    filename = f"{cut_id}_video.mp4"
+                    full_path = os.path.join(self.output_path, filename)
 
                     response = requests.get(video_url)
                     if response.status_code == 200:
@@ -89,23 +89,27 @@ class VideoGenerator(VideoGeneratorBase):
                             f.write(response.content)
                         results.append(full_path)
                     else:
-                        print(f"[{base_name}] Error status code: {response.status_code}")
+                        print(f"[cut_id={cut_id}] Error status code: {response.status_code}")
                 else:
-                    print(f"[{base_name}] no output url")
+                    print(f"[cut_id={cut_id}] no output url")
             else:
-                print(f"[{base_name}] fail to generate video: {task.status}")
+                print(f"[cut_id={cut_id}] fail to generate video: {task.status}")
 
-        list_path = os.path.join(output_path, "clip_file_list.txt")
+        list_path = os.path.join(self.output_path, "clip_file_list.txt")
         with open(list_path, "w", encoding="utf-8") as f:
             for vf in results:
                 f.write(f"file '{vf}'\n")
         
-        final_output = os.path.join(output_path, "final_merged_video.mp4")
+        final_output = os.path.join(self.output_path, "final_merged_video.mp4")
         subprocess.run([
             "ffmpeg", "-f", "concat", "-safe", "0",
             "-i", list_path, "-c", "copy", final_output
         ])
         self.video = final_output
+
+        #------------video path output------------
+        return self.video
+        #---------------삭제 가능------------------
 
 
 # -------------- For test ----------------------
