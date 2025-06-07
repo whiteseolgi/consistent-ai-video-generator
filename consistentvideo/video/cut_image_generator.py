@@ -125,7 +125,7 @@ class CutImageGenerator(CutImageGeneratorBase):
         os.makedirs(self.output_path, exist_ok=True)
         self.cut_image.save(save_path)
 
-        return self.cut_image
+        return save_path
         # --------for test, will be deleted -------------------
 
 # -------------- For test ----------------------
