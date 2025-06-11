@@ -3,6 +3,7 @@ import re
 from typing import List, Dict
 from .call_gpt import call_gpt
 
+
 class SceneGenerator:
     def __init__(self):
         pass

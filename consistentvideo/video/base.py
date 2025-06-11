@@ -6,6 +6,7 @@ class CutImageGeneratorBase(metaclass=ABCMeta):
         self.__cut = None
         self.__cut_image = None
         self.__ai_model = None
+        self.__entity = entity
 
     @abstractmethod
     def execute(self):

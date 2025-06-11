@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
 def call_gpt(prompt: str, model: str = "gpt-4o", temperature: float = 0.7, max_tokens: int = 1500) -> str:
     try:
         response = openai.chat.completions.create(
