@@ -1,6 +1,5 @@
 from consistentvideo.reference.base import SynopsisAnalyzerBase, EntityCreatorBase
 
-
 import os
 import re
 import base64
@@ -11,10 +10,11 @@ class EntityCreator:
     def __init__(self):
         self.image_dir = "reference_images"  # 기본값, set_base_dir로 재설정됨
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.subfolder = "generic"  # 서브클래스에서 덮어씀
+        self.typename = "generic"  # 서브클래스에서 덮어씀
 
-    def set_base_dir(self, base_name: str):
-        self.image_dir = os.path.join("reference_images", base_name, self.subfolder)
+    def set_base_dir(self, path: str):
+        # self.image_dir = os.path.join(path, self.subfolder)
+        self.image_dir = os.path.join(path)
         os.makedirs(self.image_dir, exist_ok=True)
 
     def create(self, type: str, name: str, description: str) -> tuple:
@@ -23,18 +23,22 @@ class EntityCreator:
     def _generate_image(self, prompt: str, name: str, view: str = "front") -> str:
         try:
             response = self.client.images.generate(
-                model="gpt-image-1", prompt=prompt, size="1024x1024", n=1
+                model="gpt-image-1",
+                prompt=prompt,
+                size="1024x1024",
+                quality="low",
+                n=1
             )
 
             image_b64 = response.data[0].b64_json
             image_bytes = base64.b64decode(image_b64)
 
             base_name = re.sub(r"[^\w\-]", "_", name)
-            filename = f"{base_name}_{view}.png"
+            filename = f"{self.typename}+{base_name}_{view}.png"
             counter = 1
             path = os.path.join(self.image_dir, filename)
             while os.path.exists(path):
-                filename = f"{base_name}_{view}_{counter}.png"
+                filename = f"filename+{counter}.png"
                 path = os.path.join(self.image_dir, filename)
                 counter += 1
 
@@ -51,12 +55,12 @@ class EntityCreator:
 class CharacterImageCreator(EntityCreator):
     def __init__(self):
         super().__init__()
-        self.subfolder = "characters"
+        self.typename = "characters"
 
     def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A studio Ghibli-style character portrait, no background. The character is facing front.
+        prompt = f"""A hyper-realistic front-facing portrait of a person, studio lighting, no background.
         Name: {name}, Description: {description}.
-        Do not include any background."""
+        Photographic realism. No illustration or cartoon style. Do not include any background."""
         image = self._generate_image(prompt, name, view="front")
         return (type, name, description, image)
 
@@ -64,12 +68,12 @@ class CharacterImageCreator(EntityCreator):
 class LocationImageCreator(EntityCreator):
     def __init__(self):
         super().__init__()
-        self.subfolder = "locations"
+        self.typename = "locations"
 
     def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A studio Ghibli-style environment illustration, no characters.
+        prompt = f"""A realistic photo of a location, wide-angle shot, natural lighting, no people.
         Location: {name}, Features: {description}.
-        Do not include any people."""
+        Cinematic realism, urban or natural environment as appropriate. Do not include any people."""
         image = self._generate_image(prompt, name, view="front")
         return (type, name, description, image)
 
@@ -77,11 +81,11 @@ class LocationImageCreator(EntityCreator):
 class ObjectImageCreator(EntityCreator):
     def __init__(self):
         super().__init__()
-        self.subfolder = "objects"
+        self.typename = "objects"
 
     def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A studio Ghibli-style fantasy object, isolated on a plain background.
+        prompt = f"""A high-resolution photograph of a real-world object, no background.
         Object: {name}, Features: {description}.
-        Do not include any characters or scenes."""
+        Do not include any characters or scenes. No illustration, realistic lighting and texture."""
         image = self._generate_image(prompt, name, view="front")
         return (type, name, description, image)

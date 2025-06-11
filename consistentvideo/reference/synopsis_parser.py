@@ -1,5 +1,6 @@
 import re
 
+
 def parse_characters(text_block):
     characters = []
     if "기타:" in text_block:
@@ -43,6 +44,7 @@ def parse_characters(text_block):
 
     return characters
 
+
 def parse_locations(text_block):
     results = []
     if "기타:" in text_block:
@@ -74,6 +76,7 @@ def parse_locations(text_block):
         })
 
     return results
+
 
 def parse_objects(text_block):
     results = []
@@ -113,4 +116,3 @@ def parse_objects(text_block):
         })
 
     return results
-

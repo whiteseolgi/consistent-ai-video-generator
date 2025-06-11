@@ -175,16 +175,14 @@ load_dotenv()
 
 
 class SynopsisAnalyzer:
-    def __init__(self, result_dir="first_results", entity_dir="entities_attribute"):
-        self.result_dir = result_dir
-        self.entity_dir = entity_dir
-        os.makedirs(self.result_dir, exist_ok=True)
-        os.makedirs(self.entity_dir, exist_ok=True)
+    def __init__(self, save_dir="first_results"):
+        self.save_dir = save_dir
+        # os.makedirs(self.save_dir, exist_ok=True)
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         self.system_prompt = SYSTEM_PROMPT
 
-    def analyze(self, synopsis_text: str, original_filename: str = "input") -> list:
+    def analyze(self, synopsis_text: str) -> list:
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": synopsis_text},
@@ -198,9 +196,10 @@ class SynopsisAnalyzer:
             result_text = response.choices[0].message.content
 
             # Save to first_results/
-            base_name = os.path.splitext(os.path.basename(original_filename))[0]
-            result_file = f"{base_name}_result.txt"
-            result_path = os.path.join(self.result_dir, result_file)
+            # base_name = os.path.splitext(os.path.basename(original_filename))[0]
+            result_file = f"entity_draft.txt"
+            os.makedirs(self.save_dir, exist_ok=True)
+            result_path = os.path.join(self.save_dir, result_file)
             with open(result_path, "w", encoding="utf-8") as f:
                 f.write(result_text)
 
@@ -235,7 +234,7 @@ class SynopsisAnalyzer:
                     )
 
             # Save to entities_attribute/
-            entity_path = os.path.join(self.entity_dir, f"{base_name}_entities.json")
+            entity_path = os.path.join(self.save_dir, f"entity_dict_draft.json")
             with open(entity_path, "w", encoding="utf-8") as f:
                 json.dump(entities, f, ensure_ascii=False, indent=2)
 
