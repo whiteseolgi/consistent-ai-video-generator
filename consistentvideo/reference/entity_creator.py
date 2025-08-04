@@ -17,7 +17,7 @@ class EntityCreator:
         self.image_dir = os.path.join(path)
         os.makedirs(self.image_dir, exist_ok=True)
 
-    def create(self, type: str, name: str, description: str) -> tuple:
+    def create(self, type: str, name: str, description: str, prompt: str = None) -> tuple:  
         raise NotImplementedError("create() must be implemented by subclasses")
 
     def _generate_image(self, prompt: str, name: str, view: str = "front") -> str:
@@ -57,10 +57,11 @@ class CharacterImageCreator(EntityCreator):
         super().__init__()
         self.typename = "characters"
 
-    def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A hyper-realistic front-facing portrait of a person, studio lighting, no background.
-        Name: {name}, Description: {description}.
-        Photographic realism. No illustration or cartoon style. Do not include any background."""
+    def create(self, type: str, name: str, description: str, prompt: str = None) -> tuple:
+        if prompt is None:  # default: Hyper-realistic front-facing portrait
+            prompt = f"""A hyper-realistic front-facing portrait of a person, studio lighting, no background.
+            Name: {name}, Description: {description}.
+            Photographic realism. No illustration or cartoon style. Do not include any background."""
         image = self._generate_image(prompt, name, view="front")
         return (type, name, description, image)
 
@@ -70,10 +71,11 @@ class LocationImageCreator(EntityCreator):
         super().__init__()
         self.typename = "locations"
 
-    def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A realistic photo of a location, wide-angle shot, natural lighting, no people.
-        Location: {name}, Features: {description}.
-        Cinematic realism, urban or natural environment as appropriate. Do not include any people."""
+    def create(self, type: str, name: str, description: str, prompt: str = None) -> tuple:
+        if prompt is None:  # default: Realistic photo of a location
+            prompt = f"""A realistic photo of a location, wide-angle shot, natural lighting, no people.
+            Location: {name}, Features: {description}.
+            Cinematic realism, urban or natural environment as appropriate. Do not include any people."""
         image = self._generate_image(prompt, name, view="front")
         return (type, name, description, image)
 
@@ -83,9 +85,10 @@ class ObjectImageCreator(EntityCreator):
         super().__init__()
         self.typename = "objects"
 
-    def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A high-resolution photograph of a real-world object, no background.
-        Object: {name}, Features: {description}.
-        Do not include any characters or scenes. No illustration, realistic lighting and texture."""
+    def create(self, type: str, name: str, description: str, prompt: str = None) -> tuple:
+        if prompt is None:  # default: High-resolution photo of an object
+            prompt = f"""A high-resolution photograph of a real-world object, no background.
+            Object: {name}, Features: {description}.
+            Do not include any characters or scenes. No illustration, realistic lighting and texture."""
         image = self._generate_image(prompt, name, view="front")
         return (type, name, description, image)
