@@ -1,6 +1,7 @@
 from .base import ImageGeneratorBase, VideoGeneratorBase
 import os
 from openai import OpenAI
+import base64
 import requests
 from PIL import Image
 from io import BytesIO
@@ -37,39 +38,53 @@ class ImageGeneratorModelGPT(ImageGeneratorBase):
         super.prompt_images = prompt_images
 
     def execute(self):
+
+        image_files = []
+        for prompt_image_path in super.prompt_images:
+            if not os.path.exists(prompt_image_path):
+                raise FileNotFoundError(f"Entity image file not found: {prompt_image_path}")
+            image_files.append(open(prompt_image_path, "rb"))
+            # print(f"/////image_path: {prompt_image_path}")
+
         # ---------------dalle3 (can also dalle2)--------------
 
-        result = super.ai_model.images.generate(
-            model="dall-e-3",
-            prompt=super.prompt_text,
-            size="1792x1024"
-        )
-        image_url = result.data[0].url
-        image_bytes = requests.get(image_url).content
-        cut_image = Image.open(BytesIO(image_bytes))
+        # result = super.ai_model.images.generate(
+        #     model="dall-e-3",
+        #     prompt=super.prompt_text,
+        #     size="1792x1024"
+        # )
+        # image_url = result.data[0].url
+        # image_bytes = requests.get(image_url).content
+        # cut_image = Image.open(BytesIO(image_bytes))
 
         # -----------------------------------------------------
         # 
         # ---------------------gpt-image-1---------------------
-        print(f"S{self.scene_num:04d}-C{cut_id:04d}.png")
-        print(f"image_files: {image_files}")
         if image_files:
             result = self.ai_model.images.edit(
                 model="gpt-image-1",
                 image=image_files,
-                prompt=prompt,
+                prompt=super.prompt_text,
                 quality="low",  # high/medium/low
                 size="1536x1024"  # There is no size compatible 16:9, need to adjust by prompt
             )
         else:
             result = self.ai_model.images.generate(
                 model="gpt-image-1",
-                prompt=prompt,
+                prompt=super.prompt_text,
                 quality="low",  # high/medium/low
                 size="1536x1024"  # There is no size compatible 16:9, need to adjust by prompt
             )
+        
+        for f in image_files:
+            f.close()
+
+        image_base64 = result.data[0].b64_json
+        image_bytes = base64.b64decode(image_base64)
+        cut_image = Image.open(BytesIO(image_bytes))
         # -----------------------------------------------------
 
+        return cut_image
 
 # -------------------------------------------------------------------------------------------
 
