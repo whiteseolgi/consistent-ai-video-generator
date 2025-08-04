@@ -11,6 +11,7 @@ class EntityCreator:
         self.image_dir = "reference_images"  # 기본값, set_base_dir로 재설정됨
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.typename = "generic"  # 서브클래스에서 덮어씀
+        self.prompt = None
 
     def set_base_dir(self, path: str):
         # self.image_dir = os.path.join(path, self.subfolder)
@@ -58,7 +59,7 @@ class CharacterImageCreator(EntityCreator):
         self.typename = "characters"
 
     def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A hyper-realistic front-facing portrait of a person, studio lighting, no background.
+        prompt = self.prompt if self.prompt is not None else f"""A hyper-realistic front-facing portrait of a person, studio lighting, no background.
         Name: {name}, Description: {description}.
         Photographic realism. No illustration or cartoon style. Do not include any background."""
         image = self._generate_image(prompt, name, view="front")
@@ -71,7 +72,7 @@ class LocationImageCreator(EntityCreator):
         self.typename = "locations"
 
     def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A realistic photo of a location, wide-angle shot, natural lighting, no people.
+        prompt = self.prompt if self.prompt is not None else f"""A realistic photo of a location, wide-angle shot, natural lighting, no people.
         Location: {name}, Features: {description}.
         Cinematic realism, urban or natural environment as appropriate. Do not include any people."""
         image = self._generate_image(prompt, name, view="front")
@@ -84,7 +85,7 @@ class ObjectImageCreator(EntityCreator):
         self.typename = "objects"
 
     def create(self, type: str, name: str, description: str) -> tuple:
-        prompt = f"""A high-resolution photograph of a real-world object, no background.
+        prompt = self.prompt if self.prompt is not None else f"""A high-resolution photograph of a real-world object, no background.
         Object: {name}, Features: {description}.
         Do not include any characters or scenes. No illustration, realistic lighting and texture."""
         image = self._generate_image(prompt, name, view="front")
