@@ -8,7 +8,7 @@ load_dotenv()
 
 class CutImageGenerator(CutImageGeneratorBase):
     def __init__(self, scene_num: int, cut: dict, output_path: str, entity_image_path: str,
-                 entity: list = None, ai_model: str = 'gpt'):  # cut = dict, entity = list<tuple(type, name, desc, image_path)>
+                 entity: list = None, ai_model: str = 'gpt', cut_image_type: str = 'reality'):  # cut = dict, entity = list<tuple(type, name, desc, image_path)>
         '''
         ex)
         cut = {'cut_id': 1, 'description': '버스 정류장에서 버스가 도착하는 장면.', 'characters': [], 'background': '조용한 아침 거리와 버스 정류장.', 'objects': ['버스', '버스 정류장']}
@@ -24,6 +24,7 @@ class CutImageGenerator(CutImageGeneratorBase):
         self.entity_image_path = entity_image_path
         self.output_path = output_path
         self.ai_model = ai_model
+        self.cut_image_type = cut_image_type
 
     def execute(self):
         if not self.cut:
@@ -61,6 +62,7 @@ class CutImageGenerator(CutImageGeneratorBase):
             "Based on /////, the front part is the story and the back part is the attributes in the story. "
             "Make the image describing the story by referring to the attributes needed to describe the story "
             "among the character, object, and background attributes."
+            f"The image should be in a {self.cut_image_type} style."
         )
 
         print(f"S{self.scene_num:04d}-C{cut_id:04d}.png")
