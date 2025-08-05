@@ -25,6 +25,7 @@ class CutImageGenerator(CutImageGeneratorBase):
         self.output_path = output_path
         self.ai_model = ai_model
         self.cut_image_type = cut_image_type
+        self.prompt = None
 
     def execute(self):
         if not self.cut:
@@ -57,7 +58,7 @@ class CutImageGenerator(CutImageGeneratorBase):
 
         # Input prompt composing
         entity_prompt = " ".join(prompt_entity_parts)
-        prompt = (
+        self.prompt = (
             f"{cut_description} ///// {entity_prompt}\n"
             "Based on /////, the front part is the story and the back part is the attributes in the story. "
             "Make the image describing the story by referring to the attributes needed to describe the story "
@@ -70,7 +71,7 @@ class CutImageGenerator(CutImageGeneratorBase):
         
         image_generator_model = CutImageGeneratorModelSelector().call_CutImageGenerator_ai(
             self.ai_model, 
-            prompt_text = prompt, 
+            prompt_text = self.prompt, 
             prompt_images = image_paths
         )
         cut_image = image_generator_model.execute()
