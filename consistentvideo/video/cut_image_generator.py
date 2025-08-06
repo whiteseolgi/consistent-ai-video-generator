@@ -1,6 +1,6 @@
 from io import BytesIO
 from .base import CutImageGeneratorBase
-from .model_selector import *
+from .model_selector import CutImageGeneratorModelSelector
 from dotenv import load_dotenv
 import os
 
@@ -74,13 +74,14 @@ class CutImageGenerator(CutImageGeneratorBase):
             self.ai_model, 
             prompt_text = self.prompt, 
             prompt_images = image_paths
-        )
+            )
 
         if image_generator_model == None:
             raise RuntimeError("Unserved Model")
 
         cut_image = image_generator_model.execute()
 
+        # Save
         filename = f"S{self.scene_num:04d}-C{cut_id:04d}.png"
         save_path = os.path.join(self.output_path, filename)
         os.makedirs(self.output_path, exist_ok=True)
