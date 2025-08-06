@@ -3,6 +3,7 @@ from runwayml import RunwayML
 import os
 import subprocess
 from dotenv import load_dotenv
+import ffmpeg
 import re
 from .model_selector import VideoGeneratorModelSelector, \
                             VideoGeneratorModelRunway, \
@@ -72,19 +73,12 @@ class VideoGenerator(VideoGeneratorBase):
                 f.write(cut_video)
             results.append(full_path)
 
+        concat_video_output_path = os.path.join(self.output_path, f"_concat_video.mp4")
 
-        # list_path = os.path.join(self.output_path, "clip_file_list.txt")
-        # with open(list_path, "w", encoding="utf-8") as f:
-        #     for vf in results:
-        #         f.write(f"file '{vf}'\n")
+        # 입력 비디오 스트림들을 준비
+        input_streams = [ffmpeg.input(video_path) for video_path in results]
 
-        # final_output = os.path.join(self.output_path, "final_merged_video.mp4")
-        # subprocess.run([
-        #     "ffmpeg", "-f", "concat", "-safe", "0",
-        #     "-i", list_path, "-c", "copy", final_output
-        # ])
-        # self.video = final_output
+        # 비디오 스트림들을 연결하고 출력
+        ffmpeg.concat(*input_streams).output(concat_video_output_path).run(overwrite_output=True)
 
-        # ------------video path output------------
-        return True
-        # ---------------삭제 가능------------------
+        return concat_video_output_path
