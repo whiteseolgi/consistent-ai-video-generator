@@ -114,3 +114,11 @@ class VideoGeneratorModelSelector:
     def __init__(self):
         pass
 
+    def call_VideoGenerator_ai(self, ai_model : str, prompt_text : str = None, prompt_images : list = None):
+        if ai_model == "runway":
+            return VideoGeneratorModelRunway(prompt_text = prompt_text, prompt_images = prompt_images)
+        elif ai_model == "veo3":
+            return VideoGeneratorModelVeo3(prompt_text = prompt_text, prompt_images = prompt_images)
+        else:
+            return None
+
