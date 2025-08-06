@@ -1,10 +1,5 @@
 from .base import VideoGeneratorBase
-import base64
-import time
-import requests
 from runwayml import RunwayML
-from PIL import Image
-from io import BytesIO
 import os
 import subprocess
 from dotenv import load_dotenv
@@ -66,6 +61,9 @@ class VideoGenerator(VideoGeneratorBase):
                 raise RuntimeError("Unserved Model")
             
             cut_video = video_generator_model.execute()
+
+            if cut_video == None:
+                break
 
             # Save
             filename = f"S{scene_num:04d}-C{cut_id:04d}_video.mp4"

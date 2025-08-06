@@ -164,22 +164,22 @@ class VideoGeneratorModelRunway(VideoGeneratorAIBase):
             time.sleep(10)
             task = self.ai_model.tasks.retrieve(task_id)
 
-        # Download
-        if task.status == 'SUCCEEDED':
-            output_urls = task.output
-            if output_urls and isinstance(output_urls, list):
-                video_url = output_urls[0]
-                response = requests.get(video_url)
-                if response.status_code == 200:
-                    return response.content # Binary type video data
-                else:
-                    print(f"[cut_id={cut_id}] Error status code: {response.status_code}")
-            else:
-                print(f"[cut_id={cut_id}] no output url")
-        else:
+        if task.status == 'FAILED':
             print(f"[cut_id={cut_id}] fail to generate video: {task.status}")
+            return None
+        output_urls = task.output
+        
+        if output_urls == None or isinstance(output_urls, list) == False:
+            print(f"[cut_id={cut_id}] no output url")
+            return None
+        video_url = output_urls[0]
+        response = requests.get(video_url)
+        
+        if response.status_code != 200:
+            print(f"[cut_id={cut_id}] Error status code: {response.status_code}")
+            return None            
 
-        return None
+        return response.content # Binary type video data
 
 
 class VideoGeneratorModelVeo3(VideoGeneratorAIBase):
