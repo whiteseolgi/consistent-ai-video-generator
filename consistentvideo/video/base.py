@@ -106,7 +106,7 @@ class VideoPostprocessorBase(metaclass=ABCMeta):
     def ai_model(self, value):
         self.__ai_model = value
 
-class ImageGeneratorBase(metaclass=ABCMeta):
+class ImageGeneratorAIBase(metaclass=ABCMeta):
     def __init__(self):
         self.__ai_model = None
         self.__prompt_text = None
@@ -140,7 +140,7 @@ class ImageGeneratorBase(metaclass=ABCMeta):
     def prompt_images(self, value):
         self.__prompt_images = value
 
-class VideoGeneratorBase(metaclass=ABCMeta):
+class VideoGeneratorAIBase(metaclass=ABCMeta):
     def __init__(self):
         self.__ai_model = None
         self.__prompt_text = None

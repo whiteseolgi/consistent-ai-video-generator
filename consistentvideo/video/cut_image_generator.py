@@ -31,7 +31,7 @@ class CutImageGenerator(CutImageGeneratorBase):
         if not self.cut:
             raise ValueError("Cut doesn't exist")
         if not self.ai_model:
-            raise RuntimeError("Image generating model dosen't exist")
+            raise ValueError("Need to select AI model")
         if not self.entity:
             print("Entity list is empty")  # not error
 
@@ -75,6 +75,10 @@ class CutImageGenerator(CutImageGeneratorBase):
             prompt_text = self.prompt, 
             prompt_images = image_paths
         )
+
+        if image_generator_model == None:
+            raise RuntimeError("Unserved Model")
+
         cut_image = image_generator_model.execute()
 
         filename = f"S{self.scene_num:04d}-C{cut_id:04d}.png"
