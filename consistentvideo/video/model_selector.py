@@ -13,12 +13,14 @@ class CutImageGeneratorModelSelector:
     def call_CutImageGenerator_ai(self, ai_model : str, prompt_text : str = None, prompt_images : list = None):
         if ai_model == "gemini":
             return ImageGeneratorModelGemini(prompt_text = prompt_text, prompt_images = prompt_images)
-        elif ai_model == "gpt":
+        elif ai_model == "gpt-image-1":
             return ImageGeneratorModelGPT_image_1(prompt_text = prompt_text, prompt_images = prompt_images)
+        elif ai_model == "dalle3":
+            return ImageGeneratorModelDalle3(prompt_text = prompt_text, prompt_images = prompt_images)
         else:
             return None
         
-        
+
 class ImageGeneratorModelGemini(ImageGeneratoAIBase):
     '''
     Need to fill this blank with Gemini version model
