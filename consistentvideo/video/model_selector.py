@@ -119,9 +119,9 @@ class VideoGeneratorModelSelector:
 
     def call_VideoGenerator_ai(self, ai_model : str, prompt_text : str = None, prompt_image : str = None):
         if ai_model == "runway":
-            return VideoGeneratorModelRunway(prompt_text = prompt_text, prompt_images = prompt_image)
+            return VideoGeneratorModelRunway(prompt_text = prompt_text, prompt_image = prompt_image)
         elif ai_model == "veo3":
-            return VideoGeneratorModelVeo3(prompt_text = prompt_text, prompt_images = prompt_image)
+            return VideoGeneratorModelVeo3(prompt_text = prompt_text, prompt_image = prompt_image)
         else:
             return None
 
@@ -144,11 +144,6 @@ class VideoGeneratorModelRunway(VideoGeneratorAIBase):
         print(f"scene_num={scene_num}, cut_num={cut_num}")
         cut = self.cut_list[scene_num-1][cut_num-1]
         cut_id = cut.get('cut_id')
-        description = cut.get('description', '')
-        base_name = os.path.basename(image_path)
-        name_without_ext = os.path.splitext(base_name)[0]
-
-        prompt_text = f"{description} Make a video that fits this situation."
 
         with open(super.prompt_image, "rb") as img_file:
             encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
@@ -174,14 +169,8 @@ class VideoGeneratorModelRunway(VideoGeneratorAIBase):
             output_urls = task.output
             if output_urls and isinstance(output_urls, list):
                 video_url = output_urls[0]
-                # filename = f"S{scene_num:04d}-C{cut_id:04d}_video.mp4"
-                # full_path = os.path.join(self.output_path, filename)
-
                 response = requests.get(video_url)
                 if response.status_code == 200:
-                    # with open(full_path, "wb") as f:
-                    #     f.write(response.content)
-                    # results.append(full_path)
                     return response.content # Binary type video data
                 else:
                     print(f"[cut_id={cut_id}] Error status code: {response.status_code}")
