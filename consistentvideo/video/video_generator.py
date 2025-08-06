@@ -22,6 +22,7 @@ class VideoGenerator(VideoGeneratorBase):
         self.output_path = output_path
         self.ai_model = ai_model
         self.cut_image_list = cut_image_list
+        self.cut_image_type_prompt = "The video should be in a reality style."
 
 
     def execute(self):
@@ -47,7 +48,10 @@ class VideoGenerator(VideoGeneratorBase):
             cut_id = cut.get('cut_id')
             description = cut.get('description', '')
 
-            prompt_text = f"{description} Make a video that fits this situation."
+            prompt_text = (
+                f"{description} Make a video that fits this situation."
+                f"{self.cut_image_type_prompt}"
+            )
 
             video_generator_model = VideoGeneratorModelSelector().call_VideoGenerator_ai(
                 self.ai_model, 
