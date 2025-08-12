@@ -1,14 +1,10 @@
 from .base import VideoGeneratorBase
-import base64
-import time
-import requests
 from runwayml import RunwayML
-from PIL import Image
-from io import BytesIO
 import os
-import subprocess
 from dotenv import load_dotenv
+import ffmpeg
 import re
+from .model_selector import VideoGeneratorModelSelector
 
 load_dotenv()
 
@@ -19,26 +15,15 @@ load_dotenv()
 
 class VideoGenerator(VideoGeneratorBase):
 
-    def __init__(self, cut_list, output_path="./", cut_image_list=None):
+    def __init__(self, cut_list, output_path="./", cut_image_list=None, ai_model : str = "runway"):
         super().__init__(cut_image_list)  # cut_image_list = ["path1", "path2", ... ]
         self.ai_model = self.__create_client()
         self.cut_list = cut_list
         self.output_path = output_path
-
-        # ------------ 추상클래스에 없는 필드 테스트용으로 만들어서 사용한 부분임 삭제 요망!!!!!!!!!!!!!!!!!!!!
+        self.ai_model = ai_model
         self.cut_image_list = cut_image_list
-        # ------------ 추상클래스에 없는 필드 테스트용으로 만들어서 사용한 부분임 삭제 요망!!!!!!!!!!!!!!!!!!!!
+        self.cut_image_type_prompt = "The video should be in a reality style."
 
-    def __create_client(self) -> RunwayML:
-        api_key = os.getenv("RUNWAY_API_KEY")
-        return RunwayML(api_key=api_key)
-
-    # def __load_gpt_api_key(self) -> str:
-    #     try:
-    #         with open("runway_api_key.txt", "r") as file:
-    #             return file.read().strip()
-    #     except FileNotFoundError:
-    #         raise RuntimeError("api key doesn't exist")
 
     def execute(self):
         if not self.cut_image_list:
@@ -62,68 +47,39 @@ class VideoGenerator(VideoGeneratorBase):
             cut = self.cut_list[scene_num-1][cut_num-1]
             cut_id = cut.get('cut_id')
             description = cut.get('description', '')
-            base_name = os.path.basename(image_path)
-            name_without_ext = os.path.splitext(base_name)[0]
 
-            prompt_text = f"{description} Make a video that fits this situation."
-
-            with open(image_path, "rb") as img_file:
-                encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
-
-            task = self.ai_model.image_to_video.create(
-                model='gen4_turbo',
-                prompt_image=f"data:image/png;base64,{encoded_image}",
-                prompt_text=prompt_text,
-                ratio='1280:720',
-                duration=5,
+            prompt_text = (
+                f"{description} Make a video that fits this situation."
+                f"{self.cut_image_type_prompt}"
             )
-            task_id = task.id
 
-            time.sleep(10)
-            task = self.ai_model.tasks.retrieve(task_id)
-            while task.status not in ['SUCCEEDED', 'FAILED']:
-                time.sleep(10)
-                task = self.ai_model.tasks.retrieve(task_id)
+            video_generator_model = VideoGeneratorModelSelector().call_VideoGenerator_ai(
+                self.ai_model, 
+                prompt_text = prompt_text, 
+                prompt_image = image_path
+                )
+            
+            if video_generator_model == None:
+                raise RuntimeError("Unserved Model")
+            
+            cut_video = video_generator_model.execute()
 
-            # Download
-            if task.status == 'SUCCEEDED':
-                output_urls = task.output
-                if output_urls and isinstance(output_urls, list):
-                    video_url = output_urls[0]
-                    filename = f"S{scene_num:04d}-C{cut_id:04d}_video.mp4"
-                    full_path = os.path.join(self.output_path, filename)
+            if cut_video == None:
+                break
 
-                    response = requests.get(video_url)
-                    if response.status_code == 200:
-                        with open(full_path, "wb") as f:
-                            f.write(response.content)
-                        results.append(full_path)
-                    else:
-                        print(f"[cut_id={cut_id}] Error status code: {response.status_code}")
-                else:
-                    print(f"[cut_id={cut_id}] no output url")
-            else:
-                print(f"[cut_id={cut_id}] fail to generate video: {task.status}")
+            # Save
+            filename = f"S{scene_num:04d}-C{cut_id:04d}_video.mp4"
+            full_path = os.path.join(self.output_path, filename)
+            with open(full_path, "wb") as f:
+                f.write(cut_video)
+            results.append(full_path)
 
-        # list_path = os.path.join(self.output_path, "clip_file_list.txt")
-        # with open(list_path, "w", encoding="utf-8") as f:
-        #     for vf in results:
-        #         f.write(f"file '{vf}'\n")
+        concat_video_output_path = os.path.join(self.output_path, f"_concat_video.mp4")
 
-        # final_output = os.path.join(self.output_path, "final_merged_video.mp4")
-        # subprocess.run([
-        #     "ffmpeg", "-f", "concat", "-safe", "0",
-        #     "-i", list_path, "-c", "copy", final_output
-        # ])
-        # self.video = final_output
+        # 입력 비디오 스트림들을 준비
+        input_streams = [ffmpeg.input(video_path) for video_path in results]
 
-        # ------------video path output------------
-        return True
-        # ---------------삭제 가능------------------
+        # 비디오 스트림들을 연결하고 출력
+        ffmpeg.concat(*input_streams).output(concat_video_output_path).run(overwrite_output=True)
 
-# -------------- For test ----------------------
-
-# if __name__ == "__main__":
-#     image_paths = ["1-1.png", "1-2.png", "1-3.png", "2-1.png", "2-2.png"]
-#     generator = VideoGenerator(cut_image_list=image_paths)
-#     generator.execute()
+        return concat_video_output_path
