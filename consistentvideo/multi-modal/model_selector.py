@@ -1,11 +1,6 @@
 from .base import MultiModalLoaderBase
 import os
 from openai import OpenAI
-import base64
-import requests
-from PIL import Image
-from io import BytesIO
-from copy import deepcopy
 import json
 
 class MultiModalLoaderModelSelector:
