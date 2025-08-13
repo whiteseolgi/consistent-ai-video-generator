@@ -1,5 +1,30 @@
 from abc import ABCMeta, abstractmethod
 
+class EntityReconstructorBase(metaclass=ABCMeta):
+    def __init__(self, multi_modal_data : str = None, entity_images_list : list = None):
+        self.__multi_modal_data = multi_modal_data
+        self.__entity_images_list = entity_images_list
+
+    @abstractmethod
+    def execute(self):
+        pass
+
+    @property
+    def multi_modal_data(self):
+        return self.__multi_modal_data
+
+    @multi_modal_data.setter
+    def multi_modal_data(self, value):
+        self.__multi_modal_data = value
+
+    @property
+    def entity_images_list(self):
+        return self.__entity_images_list
+
+    @entity_images_list.setter
+    def entity_images_list(self, value):
+        self.__entity_images_list = value
+
 
 class MultiModalLoaderBase(metaclass=ABCMeta):
     def __init__(self):
