@@ -47,31 +47,30 @@ class MultiModalLoaderModelGPT_4_1(MultiModalLoaderBase):
         entity_list = self.__load_entity_list("entity_list.txt")
 
         input_text = f"""
-            다음은 원본 entity_list입니다.
-            각 항목은 (type, name, json_attr, image_path) 형식입니다.
+            The following is the original entity_list.  
+            Each item is in the format (type, name, json_attr, image_path).  
 
-            원본 entity_list:
-            {json.dumps(entity_list, ensure_ascii=False, indent=2)}
+            Original entity_list:  
+            {json.dumps(entity_list, ensure_ascii=False, indent=2)}  
 
-            다음은 multi_modal_data입니다.
-            여기에는 이미지 분석 결과, 사물 인식, 날씨, 배경 등의 정보가 포함됩니다.
+            The following is multi_modal_data.  
+            It contains information such as image analysis results, object recognition, weather, and background details.  
 
-            multi_modal_data:
-            {json.dumps(super.prompt_text, ensure_ascii=False, indent=2)}
+            multi_modal_data:  
+            {json.dumps(super.prompt_text, ensure_ascii=False, indent=2)}  
 
-            요청사항:
-            1. multi_modal_data의 정보를 반영하여 entity_list를 수정하세요.
-            2. 기존 entity의 속성을 multi_modal_data 정보로 업데이트하거나 새 속성을 추가하세요.
-            3. 결과는 반드시 Python 리스트 형태로, 각 요소는 (type, name, json_attr, image_path) 형식이어야 하며 json_attr는 JSON 문자열로 작성하세요.
-            4. 기존 entity_list의 구조와 순서를 기본적으로 유지하되, 필요한 경우 새로운 entity를 추가해도 됩니다.
-            5. image_path가 없으면 None으로 둡니다.
+            Instructions:  
+            1. Update the entity_list by incorporating the information from multi_modal_data.  
+            2. Update existing entity attributes or add new attributes based on the information in multi_modal_data.  
+            3. The result must be in Python list format, where each element is in the form (type, name, json_attr, image_path), and json_attr must be a JSON string.  
+            4. Keep the original structure and order of the entity_list as much as possible, but you may add new entities if necessary.  
+            5. If image_path is missing, set it to None.  
         """
 
         response = super.ai_model.responses.create(
             model="gpt-4.1",
             input=input_text,
             temperature=0.2,
-            max_output_tokens=2000
         )
 
         try:
