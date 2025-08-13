@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
 class EntityReconstructorBase(metaclass=ABCMeta):
-    def __init__(self, multi_modal_data : str = None, entity_image_path : str = None):
+    def __init__(self, multi_modal_data : str = None, entity_image_directory_path : str = None):
         self.__multi_modal_data = multi_modal_data
-        self.__entity_image_path = entity_image_path
+        self.__entity_image_directory_path = entity_image_directory_path
 
     @abstractmethod
     def execute(self):
@@ -18,12 +18,12 @@ class EntityReconstructorBase(metaclass=ABCMeta):
         self.__multi_modal_data = value
 
     @property
-    def entity_image_path(self):
-        return self.__entity_image_path
+    def entity_image_directory_path(self):
+        return self.__entity_image_directory_path
 
-    @entity_image_path.setter
-    def entity_image_path(self, value):
-        self.__entity_image_path = value
+    @entity_image_directory_path.setter
+    def entity_image_directory_path(self, value):
+        self.__entity_image_directory_path = value
 
 
 class MultiModalLoaderBase(metaclass=ABCMeta):
