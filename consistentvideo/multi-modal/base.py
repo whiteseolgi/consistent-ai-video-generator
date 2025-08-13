@@ -18,12 +18,12 @@ class EntityReconstructorBase(metaclass=ABCMeta):
         self.__multi_modal_data = value
 
     @property
-    def entity_images_list(self):
-        return self.__entity_images_list
+    def entity_image_path(self):
+        return self.__entity_image_path
 
-    @entity_images_list.setter
-    def entity_images_list(self, value):
-        self.__entity_images_list = value
+    @entity_image_path.setter
+    def entity_image_path(self, value):
+        self.__entity_image_path = value
 
 
 class MultiModalLoaderBase(metaclass=ABCMeta):
