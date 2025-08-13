@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
 class EntityReconstructorBase(metaclass=ABCMeta):
-    def __init__(self, multi_modal_data : str = None, entity_images_list : list = None):
+    def __init__(self, multi_modal_data : str = None, entity_image_path : str = None):
         self.__multi_modal_data = multi_modal_data
-        self.__entity_images_list = entity_images_list
+        self.__entity_image_path = entity_image_path
 
     @abstractmethod
     def execute(self):
