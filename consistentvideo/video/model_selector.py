@@ -1,4 +1,4 @@
-from .base import ImageGeneratoAIBase, VideoGeneratorAIBase
+from .base import ImageGeneratorAIBase, VideoGeneratorAIBase
 import os
 from openai import OpenAI
 import base64
@@ -24,7 +24,7 @@ class CutImageGeneratorModelSelector:
             return None
         
 
-class ImageGeneratorModelGemini(ImageGeneratoAIBase):
+class ImageGeneratorModelGemini(ImageGeneratorAIBase):
     '''
     Need to fill this blank with Gemini version model
     '''
@@ -35,17 +35,18 @@ class ImageGeneratorModelGemini(ImageGeneratoAIBase):
         pass
     
 
-class ImageGeneratorModelDalle3(ImageGeneratoAIBase):
+class ImageGeneratorModelDalle3(ImageGeneratorAIBase):
     def __init__(self, prompt_text : str = None, prompt_images : list = None):
+        super().__init__()
         api_key = os.getenv("OPENAI_API_KEY")
-        super.ai_model = OpenAI(api_key=api_key)
-        super.prompt_text = prompt_text
-        super.prompt_images = prompt_images
+        self.ai_model = OpenAI(api_key=api_key)
+        self.prompt_text = prompt_text
+        self.prompt_images = prompt_images
 
     def execute(self):
 
         image_files = []
-        for prompt_image_path in super.prompt_images:
+        for prompt_image_path in self.prompt_images:
             if not os.path.exists(prompt_image_path):
                 raise FileNotFoundError(f"Entity image file not found: {prompt_image_path}")
             image_files.append(open(prompt_image_path, "rb"))
@@ -53,9 +54,9 @@ class ImageGeneratorModelDalle3(ImageGeneratoAIBase):
 
         # ---------------dalle3 (can also dalle2)--------------
 
-        result = super.ai_model.images.generate(
+        result = self.ai_model.images.generate(
             model="dall-e-3",
-            prompt=super.prompt_text,
+            prompt=self.prompt_text,
             size="1792x1024"
         )
         image_url = result.data[0].url
@@ -67,17 +68,18 @@ class ImageGeneratorModelDalle3(ImageGeneratoAIBase):
         return cut_image
     
 
-class ImageGeneratorModelGPT_image_1(ImageGeneratoAIBase):
+class ImageGeneratorModelGPT_image_1(ImageGeneratorAIBase):
     def __init__(self, prompt_text : str = None, prompt_images : list = None):
+        super().__init__()
         api_key = os.getenv("OPENAI_API_KEY")
-        super.ai_model = OpenAI(api_key=api_key)
-        super.prompt_text = prompt_text
-        super.prompt_images = prompt_images
+        self.ai_model = OpenAI(api_key=api_key)
+        self.prompt_text = prompt_text
+        self.prompt_images = prompt_images
 
     def execute(self):
 
         image_files = []
-        for prompt_image_path in super.prompt_images:
+        for prompt_image_path in self.prompt_images:
             if not os.path.exists(prompt_image_path):
                 raise FileNotFoundError(f"Entity image file not found: {prompt_image_path}")
             image_files.append(open(prompt_image_path, "rb"))
@@ -88,14 +90,14 @@ class ImageGeneratorModelGPT_image_1(ImageGeneratoAIBase):
             result = self.ai_model.images.edit(
                 model="gpt-image-1",
                 image=image_files,
-                prompt=super.prompt_text,
+                prompt=self.prompt_text,
                 quality="low",  # high/medium/low
                 size="1536x1024"  # There is no size compatible 16:9, need to adjust by prompt
             )
         else:
             result = self.ai_model.images.generate(
                 model="gpt-image-1",
-                prompt=super.prompt_text,
+                prompt=self.prompt_text,
                 quality="low",  # high/medium/low
                 size="1536x1024"  # There is no size compatible 16:9, need to adjust by prompt
             )
@@ -128,15 +130,16 @@ class VideoGeneratorModelSelector:
 
 class VideoGeneratorModelRunway(VideoGeneratorAIBase):
     def __init__(self, prompt_text : str = None, prompt_image : str = None):
+        super().__init__()
         api_key = os.getenv("RUNWAY_API_KEY")
-        super.ai_model = RunwayML(api_key=api_key)
-        super.prompt_text = prompt_text
-        super.prompt_image = prompt_image
+        self.ai_model = RunwayML(api_key=api_key)
+        self.prompt_text = prompt_text
+        self.prompt_image = prompt_image
 
     def execute(self):
 
         # 파일명에서 S번호와 C번호 추출
-        match = re.match(r'S(\d+)-C(\d+)', os.path.basename(super.prompt_image))
+        match = re.match(r'S(\d+)-C(\d+)', os.path.basename(self.prompt_image))
         if match:
             scene_num = int(match.group(1))  # S번호
             cut_num = int(match.group(2))    # C번호
@@ -145,13 +148,13 @@ class VideoGeneratorModelRunway(VideoGeneratorAIBase):
         cut = self.cut_list[scene_num-1][cut_num-1]
         cut_id = cut.get('cut_id')
 
-        with open(super.prompt_image, "rb") as img_file:
+        with open(self.prompt_image, "rb") as img_file:
             encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
 
         task = self.ai_model.image_to_video.create(
             model='gen4_turbo',
             prompt_image=f"data:image/png;base64,{encoded_image}",
-            prompt_text=super.prompt_text,
+            prompt_text=self.prompt_text,
             ratio='1280:720',
             duration=5,
         )
