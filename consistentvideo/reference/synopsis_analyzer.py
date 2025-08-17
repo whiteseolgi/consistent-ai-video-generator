@@ -170,8 +170,10 @@ import json
 from openai import OpenAI
 from .synopsis_parser import parse_characters, parse_locations, parse_objects
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 class SynopsisAnalyzer:
@@ -202,6 +204,7 @@ class SynopsisAnalyzer:
             result_path = os.path.join(self.save_dir, result_file)
             with open(result_path, "w", encoding="utf-8") as f:
                 f.write(result_text)
+            logger.info(f"시놉시스 1차 결과 저장: {result_path}")
 
             # Parse to structured list
             character_block = (
@@ -237,9 +240,10 @@ class SynopsisAnalyzer:
             entity_path = os.path.join(self.save_dir, f"entity_dict_draft.json")
             with open(entity_path, "w", encoding="utf-8") as f:
                 json.dump(entities, f, ensure_ascii=False, indent=2)
+            logger.info(f"엔티티 임시 사전 저장: {entity_path}")
 
             return entities
 
         except Exception as e:
-            print(f"[ERROR] 분석 실패: {e}")
+            logger.error(f"시놉시스 분석 실패: {e}")
             return []
