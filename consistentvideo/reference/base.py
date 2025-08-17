@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 class SynopsisAnalyzerBase(metaclass=ABCMeta):
     def __init__(self, synopsis=None):
         self.__synopsis = None
-        self.__entity_draft_list = None
+        self.__entity_list = None
         self.__ai_model = None
 
     @abstractmethod

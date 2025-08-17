@@ -136,7 +136,7 @@ class ImageGeneratorAIBase(metaclass=ABCMeta):
     def prompt_images(self):
         return self.__prompt_images
 
-    @prompt_text.setter
+    @prompt_images.setter
     def prompt_images(self, value):
         self.__prompt_images = value
 
@@ -170,6 +170,6 @@ class VideoGeneratorAIBase(metaclass=ABCMeta):
     def prompt_images(self):
         return self.__prompt_images
 
-    @prompt_text.setter
+    @prompt_images.setter
     def prompt_images(self, value):
         self.__prompt_images = value
