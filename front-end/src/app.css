@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/forms";
+@plugin "daisyui";
+
+/* 라이트 컬러 스킴 강제 */
+:root {
+    color-scheme: light;
+}
+
+/* Global font: Paperlogy via jsDelivr woff2 */
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+html,
+body {
+    font-family: 'Paperlogy', system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    margin: 0;
+    padding: 0;
+}
+
+.cavg-background-image-filter {
+    position: relative;
+    /* 부모를 기준으로 절대배치 */
+    background: url(https://cdn.pixabay.com/photo/2022/05/27/09/15/gimbal-stabilizer-7224727_1280.jpg) center/cover no-repeat;
+    /* z-index: 1;  <- 제거 (불필요/문제 유발) */
+}
+
+.cavg-background-image-filter::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* top/left/right/bottom: 0 대신 */
+    background-color: #000;
+    opacity: .5;
+    z-index: 0;
+    /* 오버레이를 아래로 */
+    pointer-events: none;
+    /* 클릭 방해 방지 (선택) */
+}
+
+/* 내부 콘텐츠는 오버레이 위로 */
+.cavg-background-image-filter>* {
+    position: relative;
+    z-index: 1;
+}
+
+.text-white {
+    color: #ffffff;
+}
