@@ -32,6 +32,7 @@ class EntityMultimodalEditor:
         self.image_style = image_style
         self.image_quality = image_quality
         self.image_size = image_size
+        self.aspect_ratio = "1:1"
 
         self.character_creator = CharacterImageCreator()
         self.location_creator = LocationImageCreator()
@@ -40,6 +41,37 @@ class EntityMultimodalEditor:
         self.character_creator.set_base_dir(entity_image_base_dir)
         self.location_creator.set_base_dir(entity_image_base_dir)
         self.object_creator.set_base_dir(entity_image_base_dir)
+        
+        # 이미지 모델 설정
+        self.character_creator.set_image_model(image_model)
+        self.location_creator.set_image_model(image_model)
+        self.object_creator.set_image_model(image_model)
+        
+        # 스타일, 품질, 크기 설정
+        self.character_creator.set_style(image_style)
+        self.location_creator.set_style(image_style)
+        self.object_creator.set_style(image_style)
+        
+        self.character_creator.set_image_quality(image_quality)
+        self.location_creator.set_image_quality(image_quality)
+        self.object_creator.set_image_quality(image_quality)
+        
+        self.character_creator.set_image_size(image_size)
+        self.location_creator.set_image_size(image_size)
+        self.object_creator.set_image_size(image_size)
+        
+        # Gemini 모델인 경우 aspect ratio 설정
+        if image_model == "gemini-2.5-flash-imag(Nano Banana)":
+            self.character_creator.set_aspect_ratio(self.aspect_ratio)
+            self.location_creator.set_aspect_ratio(self.aspect_ratio)
+            self.object_creator.set_aspect_ratio(self.aspect_ratio)
+    
+    def set_aspect_ratio(self, ratio: str):
+        """Gemini 모델용 aspect ratio 설정"""
+        self.aspect_ratio = ratio
+        self.character_creator.set_aspect_ratio(ratio)
+        self.location_creator.set_aspect_ratio(ratio)
+        self.object_creator.set_aspect_ratio(ratio)
 
     def _analyze_image_with_gpt_4_1(self, image_path: str, system_prompt: Optional[str] = None, context_text: Optional[str] = None) -> str:
         if not image_path or not os.path.exists(image_path):
