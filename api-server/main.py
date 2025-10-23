@@ -4,8 +4,9 @@ import json
 import logging
 from typing import List, Optional
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 # 부모 디렉토리를 파이썬 경로에 추가하여 `consistentvideo` 패키지 임포트 가능하게 설정
@@ -186,6 +187,12 @@ def parse_scenes_from_text(text: Optional[str]) -> list:
     return scenes
 
 
+def save_text(path: str, text: str) -> None:
+    ensure_dir(os.path.dirname(path))
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text or "")
+
+
 # -----------------------------
 # 스키마
 # -----------------------------
@@ -334,6 +341,20 @@ def analyze_synopsis(
     # 현재 SynopsisAnalyzer는 모델을 외부에서 받지 않으므로 입력 모델은 무시됨
     uploaded_text = read_upload_text_sync(synopsis_text_file)
     synopsis = uploaded_text if uploaded_text is not None else load_text_from_path_or_content(synopsis_text_path, synopsis_text)
+
+    # synopsis 텍스트 저장 및 기본값 처리
+    synopsis_txt_default_path = os.path.join(paths["REFERENCE_PATH"], "synopsis_text.txt")
+    provided_synopsis = (synopsis_text_file is not None) or (synopsis_text_path is not None) or (synopsis_text is not None)
+    if provided_synopsis:
+        # 사용자가 입력한 경우 항상 저장
+        save_text(synopsis_txt_default_path, synopsis or "")
+    else:
+        # 입력이 없으면 기본 파일에서 로드 시도
+        if os.path.exists(synopsis_txt_default_path):
+            with open(synopsis_txt_default_path, "r", encoding="utf-8") as f:
+                synopsis = f.read()
+        else:
+            raise HTTPException(status_code=400, detail="synopsis_text is required (no input and no default file found)")
     entity_dict_draft_list = analyzer.analyze(synopsis)
 
     saved_txt = os.path.join(analyzer_dir, "entity_draft.txt")
@@ -499,10 +520,29 @@ def generate_scenes(
 ):
     story_text_content = read_upload_text_sync(story_text_file)
     story_text_content = story_text_content if story_text_content is not None else load_text_from_path_or_content(story_text_path, story_text)
+
+    paths = derive_paths(work_dir, entity_set_name)
+
+    # story_text 저장/기본값 처리
+    story_txt_default_path = os.path.join(paths["STORY_PATH"], "story_text.txt")
+    synopsis_txt_default_path = os.path.join(paths["REFERENCE_PATH"], "synopsis_text.txt")
+    provided_story = (story_text_file is not None) or (story_text_path is not None) or (story_text is not None)
+    if provided_story:
+        save_text(story_txt_default_path, story_text_content or "")
+    else:
+        if os.path.exists(story_txt_default_path):
+            with open(story_txt_default_path, "r", encoding="utf-8") as f:
+                story_text_content = f.read()
+        elif os.path.exists(synopsis_txt_default_path):
+            with open(synopsis_txt_default_path, "r", encoding="utf-8") as f:
+                story_text_content = f.read()
+            save_text(story_txt_default_path, story_text_content)
+        else:
+            raise HTTPException(status_code=400, detail="story_text is required (no input and no default file found)")
+
     scene_gen = story.SceneGenerator()
     scenes = scene_gen.generate_scenes(story_text_content, model=text_model)
 
-    paths = derive_paths(work_dir, entity_set_name)
     output_scene_txt_path = output_scene_txt_path or paths["SCENE_TXT_PATH"]
 
     output_path = None
@@ -598,6 +638,9 @@ def generate_cut_images(
     image_style: str = Form("realistic"),
     image_quality: str = Form("low"),
     image_size: str = Form("1536x1024"),
+    scene_num: Optional[int] = Form(None),
+    cut_num: Optional[int] = Form(None),
+    selected_cuts: Optional[str] = Form(None),  # JSON string of selected cuts
 ):
     paths = derive_paths(work_dir, entity_set_name)
     entity_list_path = entity_list_path or paths["REFERENCE_ENTITY_LIST_PATH"]
@@ -618,11 +661,24 @@ def generate_cut_images(
     ensure_dir(cut_image_output_dir)
 
     cut_image_paths: List[str] = []
-    scene_num = 1
-    for scene in cuts_by_scene:
-        for cut in scene:
-            cut_image_generator = video.CutImageGenerator(
-                scene_num=scene_num,
+
+    # selected_cuts 파라미터가 있으면 선택된 컷만 처리
+    if selected_cuts:
+        import json
+        selected_list = json.loads(selected_cuts)
+        for cut_info in selected_list:
+            s_num = cut_info["scene_num"]
+            c_num = cut_info["cut_num"]
+            if s_num < 1 or s_num > len(cuts_by_scene):
+                continue
+            scene_cuts = cuts_by_scene[s_num - 1]
+            if c_num < 1 or c_num > len(scene_cuts):
+                continue
+            cut = scene_cuts[c_num - 1]
+            # cut 객체에 cut_num 추가
+            cut["cut_num"] = c_num
+            generator = video.CutImageGenerator(
+                scene_num=s_num,
                 cut=cut,
                 output_path=cut_image_output_dir,
                 entity_image_path=entity_image_dir,
@@ -632,9 +688,54 @@ def generate_cut_images(
                 quality=image_quality,
                 size=image_size,
             )
-            filename = cut_image_generator.execute()
+            filename = generator.execute()
             cut_image_paths.append(filename)
-        scene_num += 1
+    # 단일 컷 지정 시 처리
+    elif scene_num is not None and cut_num is not None:
+        if scene_num < 1 or scene_num > len(cuts_by_scene):
+            raise HTTPException(status_code=400, detail="scene_num out of range")
+        scene_cuts = cuts_by_scene[scene_num - 1]
+        if cut_num < 1 or cut_num > len(scene_cuts):
+            raise HTTPException(status_code=400, detail="cut_num out of range")
+        cut = scene_cuts[cut_num - 1]
+        # cut 객체에 cut_num 추가
+        cut["cut_num"] = cut_num
+        generator = video.CutImageGenerator(
+            scene_num=scene_num,
+            cut=cut,
+            output_path=cut_image_output_dir,
+            entity_image_path=entity_image_dir,
+            entity=entity_list,
+            ai_model=image_model,
+            style=image_style,
+            quality=image_quality,
+            size=image_size,
+        )
+        filename = generator.execute()
+        cut_image_paths.append(filename)
+    else:
+        # 전체 컷 처리
+        s_idx = 1
+        for scene in cuts_by_scene:
+            c_idx = 1
+            for cut in scene:
+                # cut 객체에 cut_num 추가
+                cut["cut_num"] = c_idx
+                cut_image_generator = video.CutImageGenerator(
+                    scene_num=s_idx,
+                    cut=cut,
+                    output_path=cut_image_output_dir,
+                    entity_image_path=entity_image_dir,
+                    entity=entity_list,
+                    ai_model=image_model,
+                    style=image_style,
+                    quality=image_quality,
+                    size=image_size,
+                )
+                filename = cut_image_generator.execute()
+                cut_image_paths.append(filename)
+                c_idx += 1
+            s_idx += 1
 
     cut_image_paths.sort()
     return GenerateCutImagesResponse(cut_image_paths=cut_image_paths)
@@ -646,23 +747,61 @@ def generate_cut_videos(
     entity_set_name: Optional[str] = Form(None),
     work_dir: Optional[str] = Form(None),
     cut_image_dir: Optional[str] = Form(None),
-    cut_image_paths: Optional[List[str]] = Form(None),
+    cut_image_paths: Optional[str] = Form(None),  # JSON string of image paths
     cut_list_path: Optional[str] = Form(None),
     cut_list_file: Optional[UploadFile] = File(None),
     video_output_dir: Optional[str] = Form(None),
     video_model: str = Form("veo-3.0-fast-generate-preview"),
+    scene_num: Optional[int] = Form(None),
+    cut_num: Optional[int] = Form(None),
 ):
     # 컷 이미지 목록 로드
     image_paths: List[str] = []
     if cut_image_paths:
-        image_paths = list(cut_image_paths)
+        # cut_image_paths가 문자열로 전달되면 JSON으로 파싱
+        if isinstance(cut_image_paths, str):
+            import json
+            try:
+                cut_image_paths = json.loads(cut_image_paths)
+            except:
+                cut_image_paths = [cut_image_paths]
+        
+        # relative path를 absolute path로 변환
+        base_path = os.path.join(work_dir, entity_set_name)
+        for relative_path in cut_image_paths:
+            if relative_path:
+                full_path = os.path.join(base_path, relative_path)
+                if os.path.exists(full_path):
+                    image_paths.append(full_path)
     else:
         paths = derive_paths(work_dir, entity_set_name)
         cid = cut_image_dir or paths["CUT_IMG_DIR"]
-        for filename in os.listdir(cid):
-            if filename.lower().endswith((".png", ".jpg", ".jpeg")):
-                image_paths.append(os.path.join(cid, filename))
-        image_paths.sort()
+        # 단일 컷 지정 시 해당 파일만 사용
+        if scene_num is not None and cut_num is not None:
+            # 컷 리스트를 사용해 파일명 구성
+            paths2 = derive_paths(work_dir, entity_set_name)
+            if cut_list_file is not None:
+                cuts_by_scene = parse_cut_list_from_text(read_upload_text_sync(cut_list_file))
+            else:
+                clp = cut_list_path or paths2["CUT_TXT_PATH"]
+                cuts_by_scene = load_cut_list(clp)
+            if scene_num < 1 or scene_num > len(cuts_by_scene):
+                raise HTTPException(status_code=400, detail="scene_num out of range")
+            scene_cuts = cuts_by_scene[scene_num - 1]
+            if cut_num < 1 or cut_num > len(scene_cuts):
+                raise HTTPException(status_code=400, detail="cut_num out of range")
+            cut = scene_cuts[cut_num - 1]
+            cut_id = cut.get("cut_id", cut_num)
+            expected = os.path.join(cid, f"S{scene_num:04d}-C{cut_id:04d}.png")
+            if not os.path.exists(expected):
+                raise HTTPException(status_code=400, detail=f"cut image not found: {expected}")
+            image_paths = [expected]
+        else:
+            # 전체 이미지 사용
+            for filename in os.listdir(cid):
+                if filename.lower().endswith((".png", ".jpg", ".jpeg")):
+                    image_paths.append(os.path.join(cid, filename))
+            image_paths.sort()
 
     # 컷 리스트 로드
     paths2 = derive_paths(work_dir, entity_set_name)
@@ -744,5 +883,291 @@ def concat_videos(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# 8) 기존 entity_list 로드
+@app.get("/load-entity-list")
+def get_entity_list(
+    work_dir: str,
+    entity_set_name: str
+):
+    paths = derive_paths(work_dir, entity_set_name)
+    entity_list_path = paths["REFERENCE_ENTITY_LIST_PATH"]
+    
+    if not entity_list_path or not os.path.exists(entity_list_path):
+        raise HTTPException(status_code=404, detail="Entity list not found")
+    
+    entities = load_entity_list(entity_list_path)
+    # 원본 상대 경로를 그대로 반환
+    return {"entity_list": entities}
+
+
+# 9) 기존 scenes 로드
+@app.get("/load-scenes")
+def get_scenes(
+    work_dir: str,
+    entity_set_name: str
+):
+    paths = derive_paths(work_dir, entity_set_name)
+    scenes_path = paths["SCENE_TXT_PATH"]
+    
+    if not scenes_path or not os.path.exists(scenes_path):
+        raise HTTPException(status_code=404, detail="Scenes not found")
+    
+    scenes = parse_scenes_from_text(open(scenes_path, "r", encoding="utf-8").read())
+    return {"scenes": scenes}
+
+
+# 10) 기존 cuts 로드
+@app.get("/load-cuts")
+def get_cuts(
+    work_dir: str,
+    entity_set_name: str
+):
+    paths = derive_paths(work_dir, entity_set_name)
+    cuts_path = paths["CUT_TXT_PATH"]
+    
+    if not cuts_path or not os.path.exists(cuts_path):
+        raise HTTPException(status_code=404, detail="Cuts not found")
+    
+    cuts = load_cut_list(cuts_path)
+    return {"cuts": cuts}
+
+
+# 11) 정적 이미지 파일 서빙
+@app.get("/static/image")
+@app.head("/static/image")
+def serve_image(
+    work_dir: str,
+    entity_set_name: str,
+    relative_path: str
+):
+    """이미지 파일을 서빙하는 엔드포인트"""
+    # 보안: 경로 탐색 공격 방지
+    if ".." in relative_path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    
+    # 경로 구성
+    # relative_path가 video/로 시작하면 base_dir부터, 아니면 reference/images부터
+    if relative_path.startswith("video/"):
+        # video 경로는 entity_set_name 아래에 있음
+        base_path = os.path.join(work_dir, entity_set_name)
+        full_path = os.path.join(base_path, relative_path)
+    else:
+        # 레퍼런스 이미지는 reference/images 아래에 있음
+        paths = derive_paths(work_dir, entity_set_name)
+        reference_images_dir = paths["REFERENCE_IMAGES_DIR"]
+        full_path = os.path.join(reference_images_dir, relative_path)
+    
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail=f"Image not found: {full_path}")
+    
+    # 이미지 파일인지 확인
+    if not full_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+        raise HTTPException(status_code=400, detail="Not an image file")
+    
+    # 적절한 MIME 타입 설정
+    if full_path.lower().endswith('.png'):
+        media_type = "image/png"
+    elif full_path.lower().endswith('.jpg') or full_path.lower().endswith('.jpeg'):
+        media_type = "image/jpeg"
+    elif full_path.lower().endswith('.gif'):
+        media_type = "image/gif"
+    elif full_path.lower().endswith('.webp'):
+        media_type = "image/webp"
+    else:
+        media_type = "image/png"
+    
+    return FileResponse(full_path, media_type=media_type)
+
+
+# 12) 시놉시스 텍스트 로드
+@app.get("/load-synopsis-text")
+def load_synopsis_text(
+    work_dir: str,
+    entity_set_name: str
+):
+    paths = derive_paths(work_dir, entity_set_name)
+    synopsis_path = os.path.join(paths["REFERENCE_PATH"], "synopsis_text.txt")
+    
+    if os.path.exists(synopsis_path):
+        with open(synopsis_path, "r", encoding="utf-8") as f:
+            return {"text": f.read()}
+    return {"text": ""}
+
+
+# 13) 스토리 텍스트 로드
+@app.get("/load-story-text")
+def load_story_text(
+    work_dir: str,
+    entity_set_name: str
+):
+    paths = derive_paths(work_dir, entity_set_name)
+    story_path = os.path.join(paths["STORY_PATH"], "story_text.txt")
+    synopsis_path = os.path.join(paths["REFERENCE_PATH"], "synopsis_text.txt")
+    
+    # 스토리 파일이 있으면 우선 반환
+    if os.path.exists(story_path):
+        with open(story_path, "r", encoding="utf-8") as f:
+            return {"text": f.read(), "source": "story"}
+    # 없으면 시놉시스 파일 반환
+    elif os.path.exists(synopsis_path):
+        with open(synopsis_path, "r", encoding="utf-8") as f:
+            return {"text": f.read(), "source": "synopsis"}
+    return {"text": "", "source": "none"}
+
+
+# 14) 기존 프로젝트 목록 조회
+@app.get("/list-projects")
+def list_projects(work_dir: str):
+    if not os.path.exists(work_dir):
+        return {"projects": []}
+    
+    projects = []
+    for item in os.listdir(work_dir):
+        item_path = os.path.join(work_dir, item)
+        # 디렉토리이고 reference 폴더가 있으면 프로젝트로 간주
+        if os.path.isdir(item_path):
+            reference_path = os.path.join(item_path, "reference")
+            if os.path.exists(reference_path):
+                projects.append(item)
+    
+    return {"projects": sorted(projects)}
+
+
+# 15) 생성된 컷 이미지 목록 조회
+@app.get("/load-cut-images")
+def load_cut_images(work_dir: str, entity_set_name: str):
+    paths = derive_paths(work_dir, entity_set_name)
+    images_dir = paths["CUT_IMG_DIR"]  # 올바른 키 이름으로 수정
+    
+    if not os.path.exists(images_dir):
+        return {"images": []}
+    
+    images = []
+    for filename in sorted(os.listdir(images_dir)):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            # S01-C01 형식에서 씬/컷 번호 추출
+            import re
+            match = re.match(r"S(\d+)-C(\d+)", filename)
+            if match:
+                images.append({
+                    "scene_num": int(match.group(1)),
+                    "cut_num": int(match.group(2)),
+                    "filename": filename,
+                    "path": f"video/cut-images/{filename}"
+                })
+    
+    return {"images": images}
+
+
+# 16) 생성된 컷 영상 목록 조회
+@app.get("/load-cut-videos")
+def load_cut_videos(work_dir: str, entity_set_name: str):
+    paths = derive_paths(work_dir, entity_set_name)
+    videos_dir = paths["VIDEO_OUTPUT_DIR"]
+    
+    if not os.path.exists(videos_dir):
+        return {"videos": []}
+    
+    videos = []
+    for filename in sorted(os.listdir(videos_dir)):
+        if filename.lower().endswith('.mp4'):
+            # S01-C01 형식에서 씬/컷 번호 추출
+            import re
+            match = re.match(r"S(\d+)-C(\d+)", filename)
+            if match:
+                videos.append({
+                    "scene_num": int(match.group(1)),
+                    "cut_num": int(match.group(2)),
+                    "filename": filename,
+                    "path": f"video/output/{filename}"
+                })
+    
+    return {"videos": videos}
+
+
+# 17) 비디오 파일 서빙
+@app.get("/static/video")
+@app.head("/static/video")
+def serve_video(work_dir: str, entity_set_name: str, relative_path: str, response: Response):
+    """Serve video files"""
+    video_path = os.path.join(work_dir, entity_set_name, relative_path)
+    
+    # Debug logging
+    logger.info(f"Requested video path: {video_path}")
+    logger.info(f"Decoded relative_path: {relative_path}")
+    logger.info(f"File exists: {os.path.exists(video_path)}")
+    
+    if not os.path.exists(video_path):
+        logger.error(f"Video not found at: {video_path}")
+        raise HTTPException(status_code=404, detail=f"Video not found: {video_path}")
+    
+    # Add CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    return FileResponse(video_path, media_type="video/mp4")
+
+# 18) 최종 비디오 파일 서빙 (파일명 없이 프로젝트로 접근)
+@app.get("/final-video")
+@app.head("/final-video")
+def serve_final_video(work_dir: str, entity_set_name: str, response: Response):
+    """Serve final concatenated video by project info only"""
+    final_video_name = f"{entity_set_name}_concat_video.mp4"
+    video_path = os.path.join(work_dir, entity_set_name, "video", final_video_name)
+    
+    # Debug logging
+    logger.info(f"Final video path: {video_path}")
+    logger.info(f"File exists: {os.path.exists(video_path)}")
+    
+    if not os.path.exists(video_path):
+        logger.error(f"Final video not found at: {video_path}")
+        raise HTTPException(status_code=404, detail=f"Final video not found")
+    
+    # Add CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"  
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    return FileResponse(video_path, media_type="video/mp4")
+
+
+# 19) 서버 IP 주소 감지
+@app.get("/server-info")
+def get_server_info():
+    """서버의 네트워크 정보 반환"""
+    import socket
+    import subprocess
+    
+    try:
+        # 로컬 IP 주소 감지
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+        
+        # 대체 방법으로 ifconfig 사용
+        try:
+            result = subprocess.run(['ifconfig'], capture_output=True, text=True)
+            ifconfig_output = result.stdout
+        except:
+            ifconfig_output = ""
+        
+        return {
+            "local_ip": local_ip,
+            "hostname": socket.gethostname(),
+            "api_url": f"http://{local_ip}:8000",
+            "debug_info": {
+                "ifconfig": ifconfig_output[:1000] if ifconfig_output else "Not available"
+            }
+        }
+    except Exception as e:
+        return {
+            "local_ip": "127.0.0.1",
+            "hostname": "localhost",
+            "api_url": "http://127.0.0.1:8000",
+            "error": str(e)
+        }
 
 

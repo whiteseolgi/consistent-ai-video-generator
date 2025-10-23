@@ -2,6 +2,7 @@ import os
 import base64
 import json
 from typing import List, Tuple, Optional, Dict, Any
+import logging
 
 from openai import OpenAI
 
@@ -194,6 +195,10 @@ class EntityMultimodalEditor:
         final_name = new_name or name
 
         new_image_filename = self._regenerate_reference_image(type_, final_name, final_description, reference_image_path=image_path)
+        if not new_image_filename:
+            logging.getLogger(__name__).warning("[Multimodal] 이미지 재생성 실패로 엔티티 편집을 적용하지 않습니다 (index=%s, name=%s)", index, name)
+            # 업데이트하지 않고 원본 유지
+            return (type_, name, description, image)
 
         return (type_, final_name, final_description, new_image_filename)
 
@@ -222,6 +227,10 @@ class EntityMultimodalEditor:
         )
 
         new_image_filename = self._regenerate_reference_image(type_, name, final_description, reference_image_path=image_path)
+        if not new_image_filename:
+            logging.getLogger(__name__).warning("[Multimodal] 이미지 생성 실패로 엔티티 추가를 건너뜁니다 (name=%s)", name)
+            # 생성 실패 시 호출자에서 append하지 않도록 이미지 None으로 표시
+            return (type_, name, final_description, None)
 
         return (type_, name, final_description, new_image_filename)
 
@@ -268,7 +277,11 @@ def edit_or_add_entity(
             image_path=image_path,
             extra_prompt=extra_prompt,
         )
-        updated.append(new_entity)
+        # 이미지 생성 실패 시(파일명이 None) 추가하지 않음
+        if new_entity[3] is None:
+            logging.getLogger(__name__).warning("[Multimodal] 이미지 생성 실패로 엔티티 추가를 반영하지 않습니다 (name=%s)", name)
+        else:
+            updated.append(new_entity)
     else:
         raise ValueError("operation must be 'edit' or 'add'")
 
