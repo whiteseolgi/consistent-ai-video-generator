@@ -13,6 +13,9 @@ from google import genai
 from mimetypes import guess_type
 import tempfile
 from google.genai import types as genai_types
+from pathlib import Path
+import sys
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +24,8 @@ class CutImageGeneratorModelSelector:
         pass
 
     def call_CutImageGenerator_ai(self, ai_model : str, prompt_text : str = None, prompt_images : list = None):
-        if ai_model == "gemini":
-            return ImageGeneratorModelGemini(prompt_text = prompt_text, prompt_images = prompt_images)
+        if ai_model == "gemini-2.5-flash-imag(Nano Banana)":
+            return ImageGeneratorModelGemini(prompt_text = prompt_text, prompt_images = prompt_images, ai_model = "gemini-2.5-flash-image")
         elif ai_model == "gpt-image-1":
             return ImageGeneratorModelGPT_image_1(prompt_text = prompt_text, prompt_images = prompt_images)
         elif ai_model == "dalle3":
@@ -32,15 +35,65 @@ class CutImageGeneratorModelSelector:
         
 
 class ImageGeneratorModelGemini(ImageGeneratorAIBase):
-    '''
-    Need to fill this blank with Gemini version model
-    '''
-    def __init__(self, prompt_text : str = None, prompt_images : list = None):
-        pass
+    def __init__(self, prompt_text : str = None, prompt_images : list = None, *, aspect_ratio: str = "16:9", ai_model = "gemini-2.5-flash-image"):
+        super().__init__()
+        api_key = os.getenv("GEMINI_API_KEY")
+        self.client = genai.Client(api_key=api_key)
+        self.prompt_text = prompt_text
+        self.prompt_images = prompt_images
+        self.aspect_ratio = aspect_ratio
+        self.ai_model = ai_model
 
     def execute(self):
-        pass
-    
+        # 참조 이미지가 있는 경우와 없는 경우를 분리 처리
+        if self.prompt_images:
+            # 참조 이미지가 있는 경우: PIL Image 객체 + 텍스트 프롬프트
+            contents = []
+            
+            for img_path in self.prompt_images:
+                if not os.path.exists(img_path):
+                    logger.warning(f"참조 이미지가 존재하지 않아 스킵합니다: {img_path}")
+                    continue
+                
+                # PIL Image 객체로 직접 로드
+                pil_image = Image.open(img_path)
+                contents.append(pil_image)
+            
+            # 텍스트 프롬프트 추가
+            contents.append(self.prompt_text)
+            
+            response = self.client.models.generate_content(
+                model=self.ai_model,
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    image_config=genai_types.ImageConfig(
+                        aspect_ratio=self.aspect_ratio,
+                    )
+                )
+            )
+        else:
+            # 참조 이미지가 없는 경우: 텍스트만
+            response = self.client.models.generate_content(
+                model=self.ai_model,
+                contents=[self.prompt_text],
+                config=genai_types.GenerateContentConfig(
+                    image_config=genai_types.ImageConfig(
+                        aspect_ratio=self.aspect_ratio,
+                    )
+                )
+            )
+
+        image_parts = [
+            part.inline_data.data
+            for part in response.candidates[0].content.parts
+            if part.inline_data
+        ]
+
+        if image_parts:
+            cut_image = Image.open(BytesIO(image_parts[0]))
+        # -----------------------------------------------------
+
+        return cut_image
 
 class ImageGeneratorModelDalle3(ImageGeneratorAIBase):
     def __init__(self, prompt_text : str = None, prompt_images : list = None):
@@ -136,6 +189,8 @@ class VideoGeneratorModelSelector:
             return VideoGeneratorModelRunway(prompt_text = prompt_text, prompt_image = prompt_image)
         elif ai_model.startswith("veo-3.0"):
             return VideoGeneratorModelVeo3(prompt_text = prompt_text, prompt_image = prompt_image, ai_model = ai_model)
+        elif ai_model == "sora2":
+            return VideoGeneratorModelSora2(prompt_text = prompt_text, prompt_image = prompt_image)
         else:
             return None
 
@@ -294,3 +349,92 @@ class VideoGeneratorModelVeo3(VideoGeneratorAIBase):
             return None
 
         return output_bytes
+
+
+class VideoGeneratorModelSora2(VideoGeneratorAIBase):
+    def __init__(self, prompt_text: str = None, prompt_image: str = None, seconds: int = 4):
+        super().__init__()
+        api_key = os.getenv("OPENAI_API_KEY")
+        self.client = OpenAI(api_key=api_key)
+        self.prompt_text = prompt_text
+        self.prompt_image = prompt_image
+        self.seconds = seconds
+
+    def execute(self):
+        # 파일명에서 S번호와 C번호 추출
+        match = re.match(r'S(\d+)-C(\d+)', os.path.basename(self.prompt_image))
+        if not match:
+            raise ValueError("prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다.")
+        scene_num = int(match.group(1))  # S번호
+        cut_num = int(match.group(2))    # C번호
+
+        logger.info(f"scene_num={scene_num}, cut_num={cut_num}")
+        cut = self.cut_list[scene_num-1][cut_num-1]
+        cut_id = cut.get('cut_id')
+
+        try:
+            # Sora 2 API 호출 (OpenAI 비디오 생성 API 패턴 기반)
+            logger.info(f"Sora 2 작업 생성: scene={scene_num}, cut={cut_num}")
+            
+            # 이미지가 있는 경우 base64로 인코딩
+            image_data = None
+            if self.prompt_image and os.path.exists(self.prompt_image):
+                img_resized = Image.open(self.prompt_image).resize((1280,720))
+                resized_img_path = os.path.join(os.path.dirname(self.prompt_image), "resized_" + os.path.basename(self.prompt_image))
+                print(img_resized, resized_img_path)
+                img_resized.save(resized_img_path)
+                image_data = Path(resized_img_path)
+
+            # Sora 2 API 요청 구성
+            request_data = {
+                "model": "sora-2",
+                "prompt": self.prompt_text,
+                "seconds": self.seconds,
+                "size": "1280x720",  # HD 해상도
+            }
+            
+            # 이미지가 있는 경우 추가
+            if image_data:
+                request_data["input_reference"] = image_data
+
+            # OpenAI API 호출 (실제 구현에서는 OpenAI의 비디오 생성 엔드포인트 사용)
+            video = self.client.videos.create(**request_data)
+
+            print("Video generation started:", video)
+
+            progress = getattr(video, "progress", 0)
+            bar_length = 30
+
+            while video.status in ("in_progress", "queued"):
+                # Refresh status
+                video = self.client.videos.retrieve(video.id)
+                progress = getattr(video, "progress", 0)
+
+                filled_length = int((progress / 100) * bar_length)
+                bar = "=" * filled_length + "-" * (bar_length - filled_length)
+                status_text = "Queued" if video.status == "queued" else "Processing"
+
+                sys.stdout.write(f"\r{status_text}: [{bar}] {progress:.1f}%")
+                sys.stdout.flush()
+                time.sleep(2)
+
+            print()
+            if video.status == "failed":
+                message = getattr(
+                    getattr(video, "error", None), "message", "Video generation failed"
+                )
+                print(message)
+                return
+
+            print("Video generation completed:", video)
+            print("Downloading video content...")
+
+            response = self.client.videos.download_content(video.id, variant="video")
+            print(response)
+            content = response.read()
+            print(content)
+            return content
+
+        except Exception as e:
+            logger.error(f"[cut_id={cut_id}] Sora 2 비디오 생성 실패: {e}")
+            return None

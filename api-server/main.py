@@ -411,6 +411,9 @@ def create_entities(
         creator.set_style(image_style)
         creator.set_image_quality(image_quality)
         creator.set_image_size(image_size)
+        # Gemini 모델인 경우 aspect ratio 설정
+        if image_model == "gemini-2.5-flash-imag(Nano Banana)":
+            creator.set_aspect_ratio("1:1")
 
     entity_list = []
     with open(entity_list_output_path, "w", encoding="utf-8") as f:
@@ -484,6 +487,10 @@ async def multimodal_edit_or_add(
         image_quality=image_quality,
         image_size=image_size,
     )
+    
+    # Gemini 모델인 경우 aspect ratio 설정
+    if image_model == "gemini-2.5-flash-imag(Nano Banana)":
+        editor.set_aspect_ratio("1:1")
 
     # 수정/추가 실행
     updated_list = edit_or_add_entity(
