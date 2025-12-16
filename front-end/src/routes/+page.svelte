@@ -14,9 +14,9 @@
     let defaultImageQuality = $projectState.default_image_quality;
     let defaultImageSize = $projectState.default_image_size;
 
-    const textModels: TextModel[] = ["gpt-4.1", "gpt-4o", "gpt-5"];
-    const imageModels: ImageModel[] = ["gpt-image-1", "gemini-2.5-flash-imag(Nano Banana)"];
-    const videoModels: VideoModel[] = ["veo-3.0-fast-generate-preview", "veo-3.0-generate-preview", "runway", "sora2"];
+    const textModels: TextModel[] = ["gpt-4.1", "gpt-4o", "gpt-5", "gpt-5.1"];
+    const imageModels: ImageModel[] = ["gpt-image-1", "gemini-2.5-flash-imag(Nano Banana)", "gemini-3-pro-image-preview(Nano Banana Pro)"];
+    const videoModels: VideoModel[] = ["runway", "sora2", "veo-3.0-fast-generate-001", "veo-3.0-generate-001", "veo-3.1-fast-generate-preview", "veo-3.1-generate-preview"];
     const imageStyles: ImageStyle[] = ["realistic", "illustration", "anime", "watercolor", "oil_painting", "comic", "storybook", "sketch", "pixel_art", "lowpoly"];
     const imageQualities: ImageQuality[] = ["low", "medium", "high"];
     const imageSizes: ImageSize[] = ["1024x1024", "1536x1024", "2048x2048"];

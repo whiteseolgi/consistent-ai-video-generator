@@ -24,9 +24,9 @@ export interface Cut {
 }
 
 // AI Model Types
-export type TextModel = "gpt-4.1" | "gpt-4o" | "gpt-5";
-export type ImageModel = "gpt-image-1" | "gemini-2.5-flash-imag(Nano Banana)";
-export type VideoModel = "runway" | "veo-3.0-generate-preview" | "veo-3.0-fast-generate-preview" | "sora2";
+export type TextModel = "gpt-4.1" | "gpt-4o" | "gpt-5" | "gpt-5.1";
+export type ImageModel = "gpt-image-1" | "gemini-2.5-flash-imag(Nano Banana)" | "gemini-3-pro-image-preview(Nano Banana Pro)";
+export type VideoModel = "runway" | "sora2" | "veo-3.0-fast-generate-001" | "veo-3.0-generate-001" | "veo-3.1-fast-generate-preview" | "veo-3.1-generate-preview";
 export type ImageStyle = "realistic" | "illustration" | "anime" | "watercolor" | "oil_painting" | "comic" | "storybook" | "sketch" | "pixel_art" | "lowpoly";
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageSize = "1024x1024" | "1536x1024" | "2048x2048";

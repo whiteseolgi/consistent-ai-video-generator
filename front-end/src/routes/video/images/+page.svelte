@@ -11,7 +11,7 @@
     let imageQuality: ImageQuality = $projectState.default_image_quality;
     let imageSize: ImageSize = $projectState.default_image_size;
 
-    const imageModels: ImageModel[] = ["gpt-image-1", "gemini-2.5-flash-imag(Nano Banana)"];
+    const imageModels: ImageModel[] = ["gpt-image-1", "gemini-2.5-flash-imag(Nano Banana)", "gemini-3-pro-image-preview(Nano Banana Pro)"];
     const imageStyles: ImageStyle[] = ["realistic", "illustration", "anime", "watercolor", "oil_painting", "comic", "storybook", "sketch", "pixel_art", "lowpoly"];
     const imageQualities: ImageQuality[] = ["low", "medium", "high"];
     const imageSizes: ImageSize[] = ["1024x1024", "1536x1024", "2048x2048"];
