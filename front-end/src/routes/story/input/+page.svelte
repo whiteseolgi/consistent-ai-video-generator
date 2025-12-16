@@ -9,7 +9,7 @@
   let fileInput: HTMLInputElement;
   let textModel: TextModel = $projectState.default_text_model;
   
-  const textModels: TextModel[] = ['gpt-4.1', 'gpt-4o', 'gpt-5'];
+  const textModels: TextModel[] = ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-5.1'];
   
   // Load existing story or synopsis text if available
   onMount(async () => {

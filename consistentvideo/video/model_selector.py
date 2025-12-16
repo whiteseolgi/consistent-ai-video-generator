@@ -19,23 +19,47 @@ import time
 
 logger = logging.getLogger(__name__)
 
+
 class CutImageGeneratorModelSelector:
     def __init__(self):
         pass
 
-    def call_CutImageGenerator_ai(self, ai_model : str, prompt_text : str = None, prompt_images : list = None):
+    def call_CutImageGenerator_ai(
+        self, ai_model: str, prompt_text: str = None, prompt_images: list = None
+    ):
         if ai_model == "gemini-2.5-flash-imag(Nano Banana)":
-            return ImageGeneratorModelGemini(prompt_text = prompt_text, prompt_images = prompt_images, ai_model = "gemini-2.5-flash-image")
+            return ImageGeneratorModelGemini(
+                prompt_text=prompt_text,
+                prompt_images=prompt_images,
+                ai_model="gemini-2.5-flash-image",
+            )
+        elif ai_model == "gemini-3-pro-image-preview(Nano Banana Pro)":
+            return ImageGeneratorModelGemini(
+                prompt_text=prompt_text,
+                prompt_images=prompt_images,
+                ai_model="gemini-3-pro-image-preview",
+            )
         elif ai_model == "gpt-image-1":
-            return ImageGeneratorModelGPT_image_1(prompt_text = prompt_text, prompt_images = prompt_images)
+            return ImageGeneratorModelGPT_image_1(
+                prompt_text=prompt_text, prompt_images=prompt_images
+            )
         elif ai_model == "dalle3":
-            return ImageGeneratorModelDalle3(prompt_text = prompt_text, prompt_images = prompt_images)
+            return ImageGeneratorModelDalle3(
+                prompt_text=prompt_text, prompt_images=prompt_images
+            )
         else:
             return None
-        
+
 
 class ImageGeneratorModelGemini(ImageGeneratorAIBase):
-    def __init__(self, prompt_text : str = None, prompt_images : list = None, *, aspect_ratio: str = "16:9", ai_model = "gemini-2.5-flash-image"):
+    def __init__(
+        self,
+        prompt_text: str = None,
+        prompt_images: list = None,
+        *,
+        aspect_ratio: str = "16:9",
+        ai_model="gemini-2.5-flash-image",
+    ):
         super().__init__()
         api_key = os.getenv("GEMINI_API_KEY")
         self.client = genai.Client(api_key=api_key)
@@ -49,19 +73,21 @@ class ImageGeneratorModelGemini(ImageGeneratorAIBase):
         if self.prompt_images:
             # 참조 이미지가 있는 경우: PIL Image 객체 + 텍스트 프롬프트
             contents = []
-            
+
             for img_path in self.prompt_images:
                 if not os.path.exists(img_path):
-                    logger.warning(f"참조 이미지가 존재하지 않아 스킵합니다: {img_path}")
+                    logger.warning(
+                        f"참조 이미지가 존재하지 않아 스킵합니다: {img_path}"
+                    )
                     continue
-                
+
                 # PIL Image 객체로 직접 로드
                 pil_image = Image.open(img_path)
                 contents.append(pil_image)
-            
+
             # 텍스트 프롬프트 추가
             contents.append(self.prompt_text)
-            
+
             response = self.client.models.generate_content(
                 model=self.ai_model,
                 contents=contents,
@@ -69,7 +95,7 @@ class ImageGeneratorModelGemini(ImageGeneratorAIBase):
                     image_config=genai_types.ImageConfig(
                         aspect_ratio=self.aspect_ratio,
                     )
-                )
+                ),
             )
         else:
             # 참조 이미지가 없는 경우: 텍스트만
@@ -80,7 +106,7 @@ class ImageGeneratorModelGemini(ImageGeneratorAIBase):
                     image_config=genai_types.ImageConfig(
                         aspect_ratio=self.aspect_ratio,
                     )
-                )
+                ),
             )
 
         image_parts = [
@@ -95,8 +121,9 @@ class ImageGeneratorModelGemini(ImageGeneratorAIBase):
 
         return cut_image
 
+
 class ImageGeneratorModelDalle3(ImageGeneratorAIBase):
-    def __init__(self, prompt_text : str = None, prompt_images : list = None):
+    def __init__(self, prompt_text: str = None, prompt_images: list = None):
         super().__init__()
         api_key = os.getenv("OPENAI_API_KEY")
         self.ai_model = OpenAI(api_key=api_key)
@@ -108,14 +135,14 @@ class ImageGeneratorModelDalle3(ImageGeneratorAIBase):
         if self.prompt_images:
             for prompt_image_path in self.prompt_images:
                 if not os.path.exists(prompt_image_path):
-                    raise FileNotFoundError(f"참조 이미지 파일을 찾을 수 없습니다: {prompt_image_path}")
+                    raise FileNotFoundError(
+                        f"참조 이미지 파일을 찾을 수 없습니다: {prompt_image_path}"
+                    )
 
         # ---------------dalle3 (can also dalle2)--------------
 
         result = self.ai_model.images.generate(
-            model="dall-e-3",
-            prompt=self.prompt_text,
-            size="1792x1024"
+            model="dall-e-3", prompt=self.prompt_text, size="1792x1024"
         )
         image_url = result.data[0].url
         image_bytes = requests.get(image_url).content
@@ -124,10 +151,17 @@ class ImageGeneratorModelDalle3(ImageGeneratorAIBase):
         # -----------------------------------------------------
 
         return cut_image
-    
+
 
 class ImageGeneratorModelGPT_image_1(ImageGeneratorAIBase):
-    def __init__(self, prompt_text : str = None, prompt_images : list = None, *, quality: str = "low", size: str = "1536x1024"):
+    def __init__(
+        self,
+        prompt_text: str = None,
+        prompt_images: list = None,
+        *,
+        quality: str = "low",
+        size: str = "1536x1024",
+    ):
         super().__init__()
         api_key = os.getenv("OPENAI_API_KEY")
         self.ai_model = OpenAI(api_key=api_key)
@@ -143,7 +177,9 @@ class ImageGeneratorModelGPT_image_1(ImageGeneratorAIBase):
             if self.prompt_images:
                 for img_path in self.prompt_images:
                     if not os.path.exists(img_path):
-                        logger.warning(f"참조 이미지가 존재하지 않아 스킵합니다: {img_path}")
+                        logger.warning(
+                            f"참조 이미지가 존재하지 않아 스킵합니다: {img_path}"
+                        )
                         continue
                     image_file_handles.append(open(img_path, "rb"))
 
@@ -154,14 +190,14 @@ class ImageGeneratorModelGPT_image_1(ImageGeneratorAIBase):
                     image=image_file_handles,
                     prompt=self.prompt_text,
                     quality=self.quality,  # high/medium/low
-                    size=self.size  # e.g., 1536x1024
+                    size=self.size,  # e.g., 1536x1024
                 )
             else:
                 result = self.ai_model.images.generate(
                     model="gpt-image-1",
                     prompt=self.prompt_text,
                     quality=self.quality,  # high/medium/low
-                    size=self.size  # e.g., 1536x1024
+                    size=self.size,  # e.g., 1536x1024
                 )
         finally:
             for f in image_file_handles:
@@ -177,6 +213,7 @@ class ImageGeneratorModelGPT_image_1(ImageGeneratorAIBase):
 
         return cut_image
 
+
 # -------------------------------------------------------------------------------------------
 
 
@@ -184,19 +221,27 @@ class VideoGeneratorModelSelector:
     def __init__(self):
         pass
 
-    def call_VideoGenerator_ai(self, ai_model : str, prompt_text : str = None, prompt_image : str = None):
+    def call_VideoGenerator_ai(
+        self, ai_model: str, prompt_text: str = None, prompt_image: str = None
+    ):
         if ai_model == "runway":
-            return VideoGeneratorModelRunway(prompt_text = prompt_text, prompt_image = prompt_image)
-        elif ai_model.startswith("veo-3.0"):
-            return VideoGeneratorModelVeo3(prompt_text = prompt_text, prompt_image = prompt_image, ai_model = ai_model)
+            return VideoGeneratorModelRunway(
+                prompt_text=prompt_text, prompt_image=prompt_image
+            )
+        elif ai_model.startswith("veo-3"):
+            return VideoGeneratorModelVeo3(
+                prompt_text=prompt_text, prompt_image=prompt_image, ai_model=ai_model
+            )
         elif ai_model == "sora2":
-            return VideoGeneratorModelSora2(prompt_text = prompt_text, prompt_image = prompt_image)
+            return VideoGeneratorModelSora2(
+                prompt_text=prompt_text, prompt_image=prompt_image
+            )
         else:
             return None
 
 
 class VideoGeneratorModelRunway(VideoGeneratorAIBase):
-    def __init__(self, prompt_text : str = None, prompt_image : str = None):
+    def __init__(self, prompt_text: str = None, prompt_image: str = None):
         super().__init__()
         api_key = os.getenv("RUNWAY_API_KEY")
         self.ai_model = RunwayML(api_key=api_key)
@@ -205,25 +250,27 @@ class VideoGeneratorModelRunway(VideoGeneratorAIBase):
 
     def execute(self):
         # 파일명에서 S번호와 C번호 추출
-        match = re.match(r'S(\d+)-C(\d+)', os.path.basename(self.prompt_image))
+        match = re.match(r"S(\d+)-C(\d+)", os.path.basename(self.prompt_image))
         if not match:
-            raise ValueError("prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다.")
+            raise ValueError(
+                "prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다."
+            )
         scene_num = int(match.group(1))  # S번호
-        cut_num = int(match.group(2))    # C번호
+        cut_num = int(match.group(2))  # C번호
 
         logger.info(f"scene_num={scene_num}, cut_num={cut_num}")
-        cut = self.cut_list[scene_num-1][cut_num-1]
-        cut_id = cut.get('cut_id')
+        cut = self.cut_list[scene_num - 1][cut_num - 1]
+        cut_id = cut.get("cut_id")
 
         with open(self.prompt_image, "rb") as img_file:
             encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
 
         logger.info(f"Runway 작업 생성: scene={scene_num}, cut={cut_num}")
         task = self.ai_model.image_to_video.create(
-            model='gen4_turbo',
+            model="gen4_turbo",
             prompt_image=f"data:image/png;base64,{encoded_image}",
             prompt_text=self.prompt_text,
-            ratio='1280:720',
+            ratio="1280:720",
             duration=5,
         )
 
@@ -231,31 +278,36 @@ class VideoGeneratorModelRunway(VideoGeneratorAIBase):
 
         time.sleep(10)
         task = self.ai_model.tasks.retrieve(task_id)
-        while task.status not in ['SUCCEEDED', 'FAILED']:
+        while task.status not in ["SUCCEEDED", "FAILED"]:
             time.sleep(10)
             task = self.ai_model.tasks.retrieve(task_id)
             logger.debug(f"Runway 작업 상태: {task.status}")
 
-        if task.status == 'FAILED':
+        if task.status == "FAILED":
             logger.error(f"[cut_id={cut_id}] 비디오 생성 실패: {task.status}")
             return None
         output_urls = task.output
-        
+
         if output_urls == None or isinstance(output_urls, list) == False:
             logger.error(f"[cut_id={cut_id}] 출력 URL이 없습니다")
             return None
         video_url = output_urls[0]
         response = requests.get(video_url)
-        
+
         if response.status_code != 200:
             logger.error(f"[cut_id={cut_id}] 응답 코드 오류: {response.status_code}")
-            return None            
+            return None
 
-        return response.content # Binary type video data
+        return response.content  # Binary type video data
 
 
 class VideoGeneratorModelVeo3(VideoGeneratorAIBase):
-    def __init__(self, prompt_text : str = None, prompt_image : str = None, ai_model : str = "veo-3.0-fast-generate-preview"):
+    def __init__(
+        self,
+        prompt_text: str = None,
+        prompt_image: str = None,
+        ai_model: str = "veo-3.0-fast-generate-preview",
+    ):
         super().__init__()
         api_key = os.getenv("GEMINI_API_KEY")
         self.client = genai.Client(api_key=api_key)
@@ -265,15 +317,17 @@ class VideoGeneratorModelVeo3(VideoGeneratorAIBase):
 
     def execute(self):
         # 파일명에서 S번호와 C번호 추출
-        match = re.match(r'S(\d+)-C(\d+)', os.path.basename(self.prompt_image))
+        match = re.match(r"S(\d+)-C(\d+)", os.path.basename(self.prompt_image))
         if not match:
-            raise ValueError("prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다.")
+            raise ValueError(
+                "prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다."
+            )
         scene_num = int(match.group(1))  # S번호
-        cut_num = int(match.group(2))    # C번호
+        cut_num = int(match.group(2))  # C번호
 
         logger.info(f"scene_num={scene_num}, cut_num={cut_num}")
-        cut = self.cut_list[scene_num-1][cut_num-1]
-        cut_id = cut.get('cut_id')
+        cut = self.cut_list[scene_num - 1][cut_num - 1]
+        cut_id = cut.get("cut_id")
 
         # 로컬 이미지 → bytes + mimeType 구성
         with open(self.prompt_image, "rb") as img_file:
@@ -352,7 +406,9 @@ class VideoGeneratorModelVeo3(VideoGeneratorAIBase):
 
 
 class VideoGeneratorModelSora2(VideoGeneratorAIBase):
-    def __init__(self, prompt_text: str = None, prompt_image: str = None, seconds: int = 4):
+    def __init__(
+        self, prompt_text: str = None, prompt_image: str = None, seconds: int = 4
+    ):
         super().__init__()
         api_key = os.getenv("OPENAI_API_KEY")
         self.client = OpenAI(api_key=api_key)
@@ -362,25 +418,30 @@ class VideoGeneratorModelSora2(VideoGeneratorAIBase):
 
     def execute(self):
         # 파일명에서 S번호와 C번호 추출
-        match = re.match(r'S(\d+)-C(\d+)', os.path.basename(self.prompt_image))
+        match = re.match(r"S(\d+)-C(\d+)", os.path.basename(self.prompt_image))
         if not match:
-            raise ValueError("prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다.")
+            raise ValueError(
+                "prompt_image 파일명이 'S####-C####' 형식을 따르지 않습니다."
+            )
         scene_num = int(match.group(1))  # S번호
-        cut_num = int(match.group(2))    # C번호
+        cut_num = int(match.group(2))  # C번호
 
         logger.info(f"scene_num={scene_num}, cut_num={cut_num}")
-        cut = self.cut_list[scene_num-1][cut_num-1]
-        cut_id = cut.get('cut_id')
+        cut = self.cut_list[scene_num - 1][cut_num - 1]
+        cut_id = cut.get("cut_id")
 
         try:
             # Sora 2 API 호출 (OpenAI 비디오 생성 API 패턴 기반)
             logger.info(f"Sora 2 작업 생성: scene={scene_num}, cut={cut_num}")
-            
+
             # 이미지가 있는 경우 base64로 인코딩
             image_data = None
             if self.prompt_image and os.path.exists(self.prompt_image):
-                img_resized = Image.open(self.prompt_image).resize((1280,720))
-                resized_img_path = os.path.join(os.path.dirname(self.prompt_image), "resized_" + os.path.basename(self.prompt_image))
+                img_resized = Image.open(self.prompt_image).resize((1280, 720))
+                resized_img_path = os.path.join(
+                    os.path.dirname(self.prompt_image),
+                    "resized_" + os.path.basename(self.prompt_image),
+                )
                 print(img_resized, resized_img_path)
                 img_resized.save(resized_img_path)
                 image_data = Path(resized_img_path)
@@ -392,7 +453,7 @@ class VideoGeneratorModelSora2(VideoGeneratorAIBase):
                 "seconds": self.seconds,
                 "size": "1280x720",  # HD 해상도
             }
-            
+
             # 이미지가 있는 경우 추가
             if image_data:
                 request_data["input_reference"] = image_data

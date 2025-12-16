@@ -20,7 +20,7 @@ function createProjectStore() {
     entity_set_name: '',
     default_text_model: 'gpt-4.1',
     default_image_model: 'gpt-image-1',
-    default_video_model: 'veo-3.0-fast-generate-preview',
+    default_video_model: 'veo-3.1-fast-generate-preview',
     default_image_style: 'realistic',
     default_image_quality: 'low',
     default_image_size: '1536x1024'

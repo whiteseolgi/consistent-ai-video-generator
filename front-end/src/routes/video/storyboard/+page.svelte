@@ -6,7 +6,7 @@
     import type { VideoModel } from "$lib/types";
 
     let videoModel: VideoModel = $projectState.default_video_model;
-    const videoModels: VideoModel[] = ["veo-3.0-fast-generate-preview", "veo-3.0-generate-preview", "runway", "sora2"];
+    const videoModels: VideoModel[] = ["runway", "sora2", "veo-3.0-fast-generate-001", "veo-3.0-generate-001", "veo-3.1-fast-generate-preview", "veo-3.1-generate-preview"];
 
     // Load existing cut images and cuts on mount
     onMount(async () => {
